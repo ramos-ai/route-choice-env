@@ -1,0 +1,12 @@
+# IDE
+.idea/
+
+# Package
+*.egg-info/
+
+# Env
+.env
+venv/
+
+# cache
+__pycache__/
