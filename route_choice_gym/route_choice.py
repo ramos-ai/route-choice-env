@@ -1,62 +1,117 @@
 import gym
-from gym.spaces import MultiDiscrete
+from gym.spaces import Dict, Discrete
 from decimal import Decimal
-import numpy as np
 
 
 class RouteChoice(gym.Env):
+    """
+    Definitions
+        obs:
+            is the flow of vehicles on a route taken by the driver.
 
-    def __init__(self, P, alpha=0.5, epsilon=1.0, alpha_decay=0.99, epsilon_decay=0.99, min_alpha=0.0, min_epsilon=0.0,
-                 normalise_costs=True, regret_as_cost=True, agent_vehicles_factor=1.0, print_OD_pairs_every_episode=True):
+        reward:
+            is the negative of the cost of a route.
+
+    Structures
+        act_n:
+            an array from the size of n_agents, each index
+            corresponds to the action chosen by each agent.
+
+        obs_n:
+            an array from the size of n_agents, each index
+            corresponds to the observation of each agent.
+
+        reward_n:
+            an array from the size of n_agents, each index
+            corresponds to the reward of each agent.
+
+    """
+
+    def __init__(self, P, normalise_costs=True, agent_vehicles_factor=1.0):
 
         self.NORMALISE_COSTS = normalise_costs
 
         self.P = P
         self.S, self.S_time_flexibility = self.P.get_empty_solution(), self.P.get_empty_solution()
+
+        # agents of the environment
         self.drivers = []
+        self.n_agents = 0
 
-        self.n_of_agents = []
-        for od in self.P.get_OD_pairs():
-            self.n_of_agents.append(int(Decimal(str(self.P.get_OD_flow(od))) / Decimal(str(float(agent_vehicles_factor)))))
-            initial_costs = []
-            for r in self.P.get_routes(od):
-                initial_costs.append(r.get_cost(self.NORMALISE_COSTS))
-
-        self.action_space = MultiDiscrete([self.P.get_route_set_size(od) for od in self.P.get_OD_pairs()])
+        # n_of_agents_per_od and action_space are both dictionary, mapping from OD pairs
+        self.n_of_agents_per_od = {}
+        self.action_space = Dict()
         # self.observation_space =  # TODO
+
+        for od in self.P.get_OD_pairs():
+            n_agents = int(Decimal(str(self.P.get_OD_flow(od))) / Decimal(str(float(agent_vehicles_factor))))
+
+            self.n_agents += n_agents
+            self.n_of_agents_per_od[od] = n_agents
+            self.action_space[od] = Discrete(self.P.get_route_set_size(od))
+
+            # Initial costs
+            # initial_costs = []
+            # for r in self.P.get_routes(od):
+            #     initial_costs.append(r.get_cost(self.NORMALISE_COSTS))
 
     def step(self, action_n):
         """
-        Returns obs, reward, terminal, info for each agent.
+        Returns obs, reward, terminal for each agent.
 
         """
-        obs_n = self.__get_obs()
+        obs_n = []
         reward_n = []
         terminal_n = []
 
-        for i, d in enumerate(self.drivers):
-            od = d.get_OD_index()
-            self.S[od][action_n[i]] += d.get_flow()
-            self.S_time_flexibility[od][action_n[i]] += d.get_flow() * (1 - d.get_time_flexibility())
+        self.S, self.S_time_flexibility = self.P.get_empty_solution(), self.P.get_empty_solution()
 
-            reward_n.append(self.__get_cost(d, self.NORMALISE_COSTS))
+        for i, d in enumerate(self.drivers):
+            od_order = self.P.get_OD_order(d.get_OD_pair())
+            self.S[od_order][action_n[i]] += d.get_flow()
+            self.S_time_flexibility[od_order][action_n[i]] += d.get_flow() * (1 - d.get_time_flexibility())
+
+        print(f"solution: {self.S}")
+        self.P.evaluate_assignment(self.S, self.S_time_flexibility)
+
+        for d in self.drivers:
+            obs_n.append(self._get_obs(d))
+            reward_n.append(self._get_reward(d))
             terminal_n.append(False)
 
         return obs_n, reward_n, terminal_n
 
     def reset(self):
-        obs_n = self.__get_obs()
+        self.P.reset_graph()
+        self.S, self.S_time_flexibility = self.P.get_empty_solution(), self.P.get_empty_solution()
+
+        obs_n = []
+        for d in self.drivers:
+            obs_n.append(self._get_obs(d))
         return obs_n
 
-    def __get_cost(self, d, NORMALISE_COSTS):
-        cost = 0.0
-        od = self.P.get_OD_pairs()[d.get_OD_index()]
-        route = self.P.get_route(od, d.get_last_action())
-        cost = route.get_cost(NORMALISE_COSTS)
-        return cost
+    def _get_obs(self, d):
+        """
+        :param d: Driver instance
+        :return: obs
+        """
+        od_order = self.P.get_OD_order(d.get_OD_pair())
+        obs = self.S[od_order][d.get_last_action()]
+        return obs
 
-    def __get_obs(self):
+    def _get_reward(self, d):
         """
-            TODO
+        :param d: Driver instance
+        :return: reward
         """
-        return [0.0 for _ in self.drivers]
+        reward = -self._get_cost(d)
+        return reward
+
+    def _get_cost(self, d):
+        """
+        :param d: Driver instance
+        :return:
+        """
+        route = self.P.get_route(d.get_OD_pair(), d.get_last_action())
+        cost = route.get_cost(self.NORMALISE_COSTS)
+        return cost
