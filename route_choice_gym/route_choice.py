@@ -2,6 +2,8 @@ import gym
 from gym.spaces import Dict, Discrete
 from decimal import Decimal
 
+from route_choice_gym.problem import ProblemInstance
+
 
 class RouteChoice(gym.Env):
     """
@@ -27,11 +29,13 @@ class RouteChoice(gym.Env):
 
     """
 
-    def __init__(self, P, normalise_costs=True, agent_vehicles_factor=1.0):
+    def __init__(self, P: ProblemInstance, normalise_costs=True, agent_vehicles_factor=1.0):
 
         self.NORMALISE_COSTS = normalise_costs
 
         self.P = P
+        self.P.reset_graph()
+
         self.S, self.S_time_flexibility = self.P.get_empty_solution(), self.P.get_empty_solution()
 
         # agents of the environment
@@ -104,14 +108,17 @@ class RouteChoice(gym.Env):
         :param d: Driver instance
         :return: reward
         """
-        reward = -self._get_cost(d)
-        return reward
+        reward = self._get_cost(d)
+        return -reward
 
     def _get_cost(self, d):
         """
         :param d: Driver instance
-        :return:
+        :return: route cost
         """
         route = self.P.get_route(d.get_OD_pair(), d.get_last_action())
         cost = route.get_cost(self.NORMALISE_COSTS)
         return cost
+
+    def get_env_obs(self):
+        return self.S

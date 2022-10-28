@@ -1,13 +1,21 @@
 import sys
 import random
+from typing import Optional, Callable
+
+from route_choice_gym.core import Agent
 from route_choice_gym.route_choice import RouteChoice
 from route_choice_gym.problem import ProblemInstance
 
 
-# Simple agent class for testing the environment
-class SimpleAgent:
+def random_policy(actions_range):
+    return random.choice(actions_range)
 
-    def __init__(self, od_pair, actions, random_policy=False):
+
+# Simple agent class for testing the environment
+class SimpleDriver(Agent):
+
+    def __init__(self, od_pair, actions, policy_callback=Optional[Callable]):
+        super(SimpleDriver, self).__init__()
 
         self.__OD_pair = od_pair
         self.__last_action = 0
@@ -15,22 +23,23 @@ class SimpleAgent:
         self.__flow = 1.0
         self.__time_flexibility = 0.5
 
-        self.RANDOM_POLICY = random_policy
-        self.__strategy = {a: 0.0 for a in actions}
+        # self.__strategy = {a: 0.0 for a in actions}
+        self.__actions = actions
+        self.policy_callback: Callable = policy_callback
 
     def choose_action(self, obs):
         """
         :param obs: observation of the agent
         :return: returns an action
         """
-        if self.RANDOM_POLICY:
-            self.__last_action = random.choice([0, 1])
+        if self.policy_callback is not None:
+            self.__last_action = self.policy_callback(self.__actions)
         else:
             self.__last_action = 0
         return self.__last_action
 
     def update_policy(self, obs_, reward):
-        NotImplementedError
+        raise NotImplementedError
 
     def get_OD_pair(self):
         return self.__OD_pair
@@ -51,7 +60,7 @@ def create_env():
 
 
 def main():
-    # Initiate environment
+    # initiate environment
     env = create_env()
     n_agents_per_od = env.n_of_agents_per_od
 
@@ -59,21 +68,22 @@ def main():
     print(f"Action space: {env.action_space}")
     # print(f"Observation space: {env.observation_space}")
 
-    # Create agents
+    # create agents
     D = []
     for od, n in n_agents_per_od.items():
 
         actions = range(env.action_space[od].n)
         print(f'Creating {n} drivers for route {od} with the set of actions {actions}')
         for _ in range(n):
-            D.append(SimpleAgent(od, actions, random_policy=True))
+            D.append(SimpleDriver(od, actions, policy_callback=random_policy))
 
+    # assign drivers to environment
     env.drivers = D
     print(f'Created {len(env.drivers)} total drivers')
 
     print("\n")
     obs_n = env.reset()
-    for _ in range(10):
+    for _ in range(5):
 
         # query for action from each agent's policy
         act_n = []
