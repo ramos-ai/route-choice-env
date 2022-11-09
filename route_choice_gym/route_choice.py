@@ -1,7 +1,10 @@
 import gym
 from gym.spaces import Dict, Discrete
-from decimal import Decimal
 
+from decimal import Decimal
+from typing import List
+
+from route_choice_gym.core import DriverAgent
 from route_choice_gym.problem import ProblemInstance
 
 
@@ -31,12 +34,13 @@ class RouteChoice(gym.Env):
 
     def __init__(self, P: ProblemInstance, normalise_costs=True, agent_vehicles_factor=1.0):
 
-        self.NORMALISE_COSTS = normalise_costs
+        self.__normalize_costs = normalise_costs
 
-        self.P = P
-        self.P.reset_graph()
+        self.__problem_instance = P
+        self.__problem_instance.reset_graph()
 
-        self.S, self.S_time_flexibility = self.P.get_empty_solution(), self.P.get_empty_solution()
+        self.__solution = self.__problem_instance.get_empty_solution()
+        self.__solution_time_flexibility = self.__problem_instance.get_empty_solution()
 
         # agents of the environment
         self.drivers = []
@@ -47,17 +51,21 @@ class RouteChoice(gym.Env):
         self.action_space = Dict()
         # self.observation_space =  # TODO
 
-        for od in self.P.get_OD_pairs():
-            n_agents = int(Decimal(str(self.P.get_OD_flow(od))) / Decimal(str(float(agent_vehicles_factor))))
+        for od in self.__problem_instance.get_OD_pairs():
+            n_agents = int(Decimal(str(self.__problem_instance.get_OD_flow(od))) / Decimal(str(float(agent_vehicles_factor))))
 
             self.n_agents += n_agents
             self.n_of_agents_per_od[od] = n_agents
-            self.action_space[od] = Discrete(self.P.get_route_set_size(od))
+            self.action_space[od] = Discrete(self.__problem_instance.get_route_set_size(od))
 
             # Initial costs
             # initial_costs = []
-            # for r in self.P.get_routes(od):
-            #     initial_costs.append(r.get_cost(self.NORMALISE_COSTS))
+            # for r in self.__problem_instance.get_routes(od):
+            #     initial_costs.append(r.get_cost(self.__normalize_costs))
+
+    def set_drivers(self, drivers: List[DriverAgent]):
+        if isinstance(drivers[0], DriverAgent) and len(drivers) == self.n_agents:
+            self.drivers = drivers
 
     def step(self, action_n):
         """
@@ -68,57 +76,62 @@ class RouteChoice(gym.Env):
         reward_n = []
         terminal_n = []
 
-        self.S, self.S_time_flexibility = self.P.get_empty_solution(), self.P.get_empty_solution()
+        self.__solution = self.__problem_instance.get_empty_solution()
+        self.__solution_time_flexibility = self.__problem_instance.get_empty_solution()
 
         for i, d in enumerate(self.drivers):
-            od_order = self.P.get_OD_order(d.get_OD_pair())
-            self.S[od_order][action_n[i]] += d.get_flow()
-            self.S_time_flexibility[od_order][action_n[i]] += d.get_flow() * (1 - d.get_time_flexibility())
+            od_order = self.__problem_instance.get_OD_order(d.get_od_pair())
+            self.__solution[od_order][action_n[i]] += d.get_flow()
+            self.__solution_time_flexibility[od_order][action_n[i]] += d.get_flow() * (1 - d.get_time_flexibility())
 
-        print(f"solution: {self.S}")
-        self.P.evaluate_assignment(self.S, self.S_time_flexibility)
+        print(f"solution: {self.__solution}")
+        self.__problem_instance.evaluate_assignment(self.__solution, self.__solution_time_flexibility)
 
         for d in self.drivers:
-            obs_n.append(self._get_obs(d))
-            reward_n.append(self._get_reward(d))
-            terminal_n.append(False)
+            obs_n.append(self.__get_obs(d))
+            reward_n.append(self.__get_reward(d))
+
+            # receives True because of the stateless nature of the problem
+            terminal_n.append(True)
 
         return obs_n, reward_n, terminal_n
 
     def reset(self):
-        self.P.reset_graph()
-        self.S, self.S_time_flexibility = self.P.get_empty_solution(), self.P.get_empty_solution()
+        self.__problem_instance.reset_graph()
+
+        self.__solution = self.__problem_instance.get_empty_solution()
+        self.__solution_time_flexibility = self.__problem_instance.get_empty_solution()
 
         obs_n = []
-        for d in self.drivers:
-            obs_n.append(self._get_obs(d))
+        for _ in self.drivers:
+            obs_n.append(0.0)
         return obs_n
 
-    def _get_obs(self, d):
+    def get_env_obs(self):
+        return self.__solution
+
+    def __get_obs(self, d):
         """
         :param d: Driver instance
         :return: obs
         """
-        od_order = self.P.get_OD_order(d.get_OD_pair())
-        obs = self.S[od_order][d.get_last_action()]
+        od_order = self.__problem_instance.get_OD_order(d.get_od_pair())
+        obs = self.__solution[od_order][d.get_last_action()]
         return obs
 
-    def _get_reward(self, d):
+    def __get_reward(self, d):
         """
         :param d: Driver instance
         :return: reward
         """
-        reward = self._get_cost(d)
+        reward = self.__get_cost(d)
         return -reward
 
-    def _get_cost(self, d):
+    def __get_cost(self, d):
         """
         :param d: Driver instance
         :return: route cost
         """
-        route = self.P.get_route(d.get_OD_pair(), d.get_last_action())
-        cost = route.get_cost(self.NORMALISE_COSTS)
+        route = self.__problem_instance.get_route(d.get_od_pair(), d.get_last_action())
+        cost = route.get_cost(self.__normalize_costs)
         return cost
-
-    def get_env_obs(self):
-        return self.S
