@@ -1,12 +1,11 @@
 from typing import Optional, Callable
 
-from route_choice_gym.core import DriverAgent
-
+from route_choice_gym.core import DriverAgent, Strategy
 
 # Simple agent class for testing the environment
 class SimpleDriver(DriverAgent):
 
-    def __init__(self, od_pair, actions, policy_callback=Optional[Callable]):
+    def __init__(self, od_pair: str, actions: list, strategy: Strategy):
         super(SimpleDriver, self).__init__()
 
         self.__od_pair = od_pair
@@ -17,17 +16,14 @@ class SimpleDriver(DriverAgent):
 
         # self.__strategy = {a: 0.0 for a in actions}
         self.__actions = actions
-        self.__policy_callback: Callable = policy_callback
+        self.__strategy = strategy
 
     def choose_action(self, obs):
         """
         :param obs: observation of the agent
         :return: returns an action
         """
-        if self.__policy_callback is not None:
-            self.__last_action = self.__policy_callback(self.__actions)
-        else:
-            self.__last_action = 0
+        self.__last_action = self.__strategy.choose_action(obs)
         return self.__last_action
 
     def update_policy(self, obs_, reward):

@@ -15,25 +15,29 @@ class DriverAgent(ABC):
 
     @abstractmethod
     def get_od_pair(self) -> str:
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def get_flow(self) -> float:
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def get_time_flexibility(self) -> float:
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def get_last_action(self) -> int:
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class Strategy(ABC):
     def __init__(self, actions):
-        self.__actions = actions
+        pass
 
     @abstractmethod
     def choose_action(self):
-        raise NotImplemented
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_strategy():
+        raise NotImplementedError

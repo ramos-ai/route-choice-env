@@ -5,10 +5,7 @@ from route_choice_gym.route_choice import RouteChoice
 from route_choice_gym.problem import ProblemInstance
 
 from route_choice_gym.agents.simple_driver import SimpleDriver
-
-
-def random_policy(actions_range):
-    return random.choice(actions_range)
+from route_choice_gym.strategy import EpsilonGreedy, Random
 
 
 def create_env():
@@ -31,8 +28,9 @@ def main():
 
         actions = range(env.action_space[od].n)
         print(f'Creating {n} drivers for route {od} with the set of actions {actions}')
+
         for _ in range(n):
-            D.append(SimpleDriver(od, actions, policy_callback=random_policy))
+            D.append(SimpleDriver(od, actions, Random(actions)))
 
     # assign drivers to environment
     env.set_drivers(D)
