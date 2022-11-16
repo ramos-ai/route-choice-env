@@ -1,6 +1,5 @@
-from typing import Optional, Callable
-
 from route_choice_gym.core import DriverAgent, Strategy
+
 
 # Simple agent class for testing the environment
 class SimpleDriver(DriverAgent):
