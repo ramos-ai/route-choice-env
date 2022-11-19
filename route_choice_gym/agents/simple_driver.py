@@ -22,7 +22,7 @@ class SimpleDriver(DriverAgent):
         :param obs: observation of the agent
         :return: returns an action
         """
-        self.__last_action = self.__strategy.choose_action(obs)
+        self.__last_action = self.__strategy.action(obs)
         return self.__last_action
 
     def update_policy(self, obs_, reward):

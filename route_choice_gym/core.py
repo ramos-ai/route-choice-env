@@ -3,15 +3,10 @@ from abc import ABC, abstractmethod
 
 # An action of the agent
 class DriverAgent(ABC):
-    def __init__(self):
-
-        self.__od_pair = ''
-
-        self.__last_action = 0
-
-        self.__flow = 1.0
-
-        self.__time_flexibility = 0.5
+    __od_pair = ''
+    __last_action = 0
+    __flow = 1.0
+    __time_flexibility = 0.5
 
     @abstractmethod
     def get_od_pair(self) -> str:
@@ -35,9 +30,9 @@ class Strategy(ABC):
         pass
 
     @abstractmethod
-    def choose_action(self):
+    def action(self, obs):
         raise NotImplementedError
 
     @abstractmethod
-    def update_strategy():
+    def update(self, obs_, reward, alpha):
         raise NotImplementedError
