@@ -32,11 +32,11 @@ class RouteChoice(gym.Env):
 
     """
 
-    def __init__(self, P: ProblemInstance, normalise_costs=True, agent_vehicles_factor=1.0):
+    def __init__(self, problem_instance: ProblemInstance, normalise_costs=True, agent_vehicles_factor=1.0):
 
         self.__normalize_costs = normalise_costs
 
-        self.__problem_instance = P
+        self.__problem_instance = problem_instance
         self.__problem_instance.reset_graph()
 
         self.__solution = self.__problem_instance.get_empty_solution()
@@ -77,15 +77,21 @@ class RouteChoice(gym.Env):
         terminal_n = []
 
         self.__solution = self.__problem_instance.get_empty_solution()
-        self.__solution_time_flexibility = self.__problem_instance.get_empty_solution()
 
+        count_drivers = {od: {} for od in self.__problem_instance.get_OD_pairs()}
         for i, d in enumerate(self.drivers):
+
+            try:
+                count_drivers[d.get_od_pair()][action_n[i]] += 1
+            except:
+                count_drivers[d.get_od_pair()][action_n[i]] = 0
+
             od_order = self.__problem_instance.get_OD_order(d.get_od_pair())
             self.__solution[od_order][action_n[i]] += d.get_flow()
-            self.__solution_time_flexibility[od_order][action_n[i]] += d.get_flow() * (1 - d.get_time_flexibility())
 
+        print(f"count_drivers: {count_drivers}")
         print(f"solution: {self.__solution}")
-        self.__problem_instance.evaluate_assignment(self.__solution, self.__solution_time_flexibility)
+        self.__problem_instance.evaluate_assignment(self.__solution)
 
         for d in self.drivers:
             obs_n.append(self.__get_obs(d))
@@ -96,11 +102,10 @@ class RouteChoice(gym.Env):
 
         return obs_n, reward_n, terminal_n
 
-    def reset(self):
+    def reset(self, *, seed=None, options=None):
         self.__problem_instance.reset_graph()
 
         self.__solution = self.__problem_instance.get_empty_solution()
-        self.__solution_time_flexibility = self.__problem_instance.get_empty_solution()
 
         obs_n = []
         for _ in self.drivers:
@@ -122,10 +127,10 @@ class RouteChoice(gym.Env):
     def __get_reward(self, d):
         """
         :param d: Driver instance
-        :return: reward
+        :return: reward on the route choice problem is the cost of taking a route
         """
         reward = self.__get_cost(d)
-        return -reward
+        return reward
 
     def __get_cost(self, d):
         """

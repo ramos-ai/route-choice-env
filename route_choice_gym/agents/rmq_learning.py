@@ -1,34 +1,30 @@
 
-from route_choice_gym.core import DriverAgent, Strategy
+from route_choice_gym.core import DriverAgent, Policy
 
 
 class RMQLearning(DriverAgent):
 
-    def __init__(self, od_pair, actions, strategy: Strategy, extrapolate_costs=True, flow=1.0, initial_costs=None):
-        super(self, RMQLearning).__init__()
+    def __init__(self, od_pair, actions, flow=1.0, extrapolate_costs=True, policy: Policy = None):
+        super(RMQLearning, self).__init__()
 
         self.__od_pair = od_pair
+        self.__actions = actions
+        self.__last_action = -1
+        self.__iteration = 0
 
-        # whether the average cost estimations should extrapolate
-        # the experimented costs
-        self.__extrapolate_costs = extrapolate_costs
+        # Flow controlled by the agent (default is 1.0)
+        self.__flow = flow
 
-        # Instance of Strategy class
-        self.__strategy = strategy
+        # Strategy (Q table)
+        self.__strategy = {a: 0.0 for a in self.__actions}
 
         # Sum of the experimented costs (used to obtain the average cost)
         self.__sum_cost = 0.0
 
-        self.__last_action = -1
+        # Whether the average cost estimations should extrapolate the experimented costs
+        self.__extrapolate_costs = extrapolate_costs
 
-        # Iteration counter
-        self.__iteration = 0
-
-        # Flow controlled by the agent;
-        # it is within the interval ]0, d], where d is the total flow of the current agent's OD pair;
-        # the general setting is flow=1.0
-        self.__flow = flow
-
+        # History
         # For each action, store an [sum, samples, extrapolated_sum, avg, last, last_time] array, where:
         # * sum:                the sum of costs experimented for this action (only considers the times when it is,
         #                       in fact, chosen)
@@ -40,12 +36,8 @@ class RMQLearning(DriverAgent):
         # * last:               is the most updated cost of this action
         # * last_time:          is the most updated travel time of this action (useful for computing deltatolling)
         self.__history_actions_costs = {
-            a: [
-                0.0, 0.0, 0.0, 0.0, 0.0 if not initial_costs else initial_costs[a], 0.0
-            ] for a in actions
+            a: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for a in actions
         }
-        # Although the last item is initialised with initial_costs, tests have shown that it makes no difference
-        # (as for the strategy initialisation)
 
         # Estimated regret
         self.__estimated_regret = None
@@ -57,14 +49,17 @@ class RMQLearning(DriverAgent):
         # Minimum average cost (stored here to enhance performance)
         self.__min_avg_cost = 0.0
 
-    def get_strategy(self):
-        return self.__strategy.get()
+        # Policy used for choosing an action
+        self.__policy = policy
+
+    def get_od_pair(self):
+        return self.__od_pair
 
     def get_last_action(self):
         return self.__last_action
 
-    def get_od_pair(self):
-        return self.__od_pair
+    def get_strategy(self):
+        return self.__strategy
 
     def get_flow(self):
         return self.__flow
@@ -75,7 +70,7 @@ class RMQLearning(DriverAgent):
 
         # Estimated regret per action
         for a in self.__history_actions_costs:
-            if not self.__extrapolate_costs and self.__history_actions_costs[a][1] == 0:  # just to handle initial cases
+            if self.__extrapolate_costs is False and self.__history_actions_costs[a][1] == 0:  # just to handle initial cases
                 self.__estimated_action_regret[a] = 0.0
             else:
                 self.__estimated_action_regret[a] = self.__history_actions_costs[a][3] - self.__min_avg_cost
@@ -99,25 +94,22 @@ class RMQLearning(DriverAgent):
     def get_average_cost(self):
         return self.__sum_cost / self.__iteration
 
-    def get_time_flexibility(self):
-        return self.__time_flexibility
-
     def choose_action(self, obs: int):
 
         # increment the iteration counter
         self.__iteration += 1
-        return self.__strategy.action(obs)
+        self.__last_action = self.__policy.act(obs, d=self)
+        return self.__last_action
 
-    def update_strategy(self, obs_: int, reward: float, alpha: float = None, regret_as_cost: bool = False) -> None:
+    def update_strategy(self, obs_: int, cost: float, alpha: float = None, regret_as_cost: bool = False) -> None:
         """
 
         :param obs_:
-        :param reward: for the route choice problem, reward is the cost of takin an action
+        :param cost: for the route choice problem, reward is the cost of taking an action
         :param alpha: learning rate
         :param regret_as_cost: whether th agent should use regret as cost
         :return: None
         """
-        cost = reward
 
         # store the dictionary locally to improve performance
         self_hac = self.__history_actions_costs
@@ -156,13 +148,13 @@ class RMQLearning(DriverAgent):
             if avg_cost < self.__min_avg_cost:
                 self.__min_avg_cost = avg_cost
 
-        # update the regret
+        # Update the regret
         self.__estimate_regret()
         if regret_as_cost:
             cost = self.get_estimated_regret(self.__last_action)
 
-        # normalize cost (reward)
+        # Normalize cost (Reward)
         normalised_utility = 1 - cost
 
-        # update the strategy
-        self.__strategy.update(obs_, reward=normalised_utility, alpha=alpha)
+        # Update the strategy (Q table)
+        self.__strategy[self.__last_action] = (1 - alpha) * self.__strategy[self.__last_action] + alpha * normalised_utility

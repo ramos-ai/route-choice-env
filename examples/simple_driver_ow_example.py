@@ -1,11 +1,9 @@
-import sys
-import random
 
 from route_choice_gym.route_choice import RouteChoice
 from route_choice_gym.problem import ProblemInstance
 
 from route_choice_gym.agents.simple_driver import SimpleDriver
-from route_choice_gym.strategy import EpsilonGreedy, Random
+from route_choice_gym.policy import Random
 
 
 def create_env():

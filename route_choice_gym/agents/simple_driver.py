@@ -1,10 +1,10 @@
-from route_choice_gym.core import DriverAgent, Strategy
+from route_choice_gym.core import DriverAgent, Policy
 
 
 # Simple agent class for testing the environment
 class SimpleDriver(DriverAgent):
 
-    def __init__(self, od_pair: str, actions: list, strategy: Strategy):
+    def __init__(self, od_pair: str, actions: list, policy: Policy):
         super(SimpleDriver, self).__init__()
 
         self.__od_pair = od_pair
@@ -15,18 +15,15 @@ class SimpleDriver(DriverAgent):
 
         # self.__strategy = {a: 0.0 for a in actions}
         self.__actions = actions
-        self.__strategy = strategy
+        self.__policy = policy
 
     def choose_action(self, obs):
         """
         :param obs: observation of the agent
         :return: returns an action
         """
-        self.__last_action = self.__strategy.action(obs)
+        self.__last_action = self.__policy.act(obs, d=self)
         return self.__last_action
-
-    def update_policy(self, obs_, reward):
-        raise NotImplementedError
 
     def get_od_pair(self):
         return self.__od_pair
