@@ -40,11 +40,13 @@ class RouteChoice(gym.Env):
         self.__problem_instance.reset_graph()
 
         self.__solution = self.__problem_instance.get_empty_solution()
-        self.__solution_time_flexibility = self.__problem_instance.get_empty_solution()
 
         # agents of the environment
         self.drivers = []
         self.n_agents = 0
+
+        self.__avg_cost = 0.0
+        self.__normalised_avg_cost = 0.0
 
         # n_of_agents_per_od and action_space are both dictionary, mapping from OD pairs
         self.n_of_agents_per_od = {}
@@ -89,9 +91,9 @@ class RouteChoice(gym.Env):
             od_order = self.__problem_instance.get_OD_order(d.get_od_pair())
             self.__solution[od_order][action_n[i]] += d.get_flow()
 
-        print(f"count_drivers: {count_drivers}")
-        print(f"solution: {self.__solution}")
-        self.__problem_instance.evaluate_assignment(self.__solution)
+        # print(f"count_drivers: {count_drivers}")
+        # print(f"solution: {self.__solution}")
+        self.__avg_cost, self.__normalised_avg_cost = self.__problem_instance.evaluate_assignment(self.__solution)
 
         for d in self.drivers:
             obs_n.append(self.__get_obs(d))
@@ -112,7 +114,20 @@ class RouteChoice(gym.Env):
             obs_n.append(0.0)
         return obs_n
 
-    def get_env_obs(self):
+    @property
+    def avg_cost(self):
+        return self.__avg_cost
+
+    @property
+    def od_pairs(self):
+        return self.__problem_instance.get_OD_pairs()
+
+    @property
+    def problem_instance(self):
+        return self.__problem_instance
+
+    @property
+    def solution(self):
         return self.__solution
 
     def __get_obs(self, d):

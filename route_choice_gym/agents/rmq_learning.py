@@ -107,7 +107,7 @@ class RMQLearning(DriverAgent):
         :param obs_:
         :param cost: for the route choice problem, reward is the cost of taking an action
         :param alpha: learning rate
-        :param regret_as_cost: whether th agent should use regret as cost
+        :param regret_as_cost: whether the agent should use regret as cost
         :return: None
         """
 
