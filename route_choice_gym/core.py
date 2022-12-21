@@ -1,6 +1,5 @@
 
 class DriverAgent(object):
-
     def __init__(self):
         pass
 
@@ -8,6 +7,9 @@ class DriverAgent(object):
         raise NotImplementedError
 
     def get_flow(self) -> float:
+        raise NotImplementedError
+
+    def get_preference_money_over_time(self) -> float:
         raise NotImplementedError
 
     def get_last_action(self) -> int:

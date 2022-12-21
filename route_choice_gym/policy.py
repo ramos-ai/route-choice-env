@@ -33,10 +33,10 @@ class EpsilonGreedy(Policy):
 
     def act(self, obs, d: DriverAgent):
 
-        # Epsilon-greedy: choose the action with highest probability with probability 1-epsilon
+        # Epsilon-greedy: choose the action with the highest probability with probability 1-epsilon
         # otherwise, choose any action uniformly at random
         if np.random.random() < self.__epsilon:
-            return int(np.random.random() * len(d.get_strategy()))  # slightly slower than random.random, but it is less biased
+            return int(np.random.random() * len(d.get_strategy()))  # slower than random.random, but less biased
         else:
             return max(d.get_strategy(), key=d.get_strategy().get)
 

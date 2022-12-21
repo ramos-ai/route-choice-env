@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import timeit
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 from route_choice_gym.route_choice import RouteChoice
 from route_choice_gym.problem import ProblemInstance
@@ -37,7 +37,7 @@ class Experiment:
         self.MIN_EPSILON = 0.0
 
         # LOG
-        self.LOG_V = '01'
+        self.LOG_V = '02'
         self.LOGPATH = self.__create_log_path()
 
     @property
@@ -52,7 +52,7 @@ class Experiment:
 
         futures = {}
         results = {}
-        with ProcessPoolExecutor(max_workers=10) as ex:
+        with ProcessPoolExecutor(max_workers=6) as ex:
             for rep in range(1, self.REP+1):
                 futures[rep] = ex.submit(self.run_replication, r_id=rep)
 
@@ -61,7 +61,7 @@ class Experiment:
 
         with open(self.results_summary_filename, 'a+') as log:
             log.write(f'Results\t{self.ALG}\t{self.NET}\n')
-            log.write('rep\tavg-tt\treal\test\tabsdiff\treldiff\nproximityUE')
+            log.write('rep\tavg-tt\treal\test\tabsdiff\treldiff\n')  # \tproximityUE\n')
             for rep, result in results.items():
 
                 # result is a vector with 5 indices:
@@ -81,7 +81,7 @@ class Experiment:
         print('========================================================================\n')
 
         # initiate environment
-        problem_instance = ProblemInstance(self.NET)
+        problem_instance = ProblemInstance(self.NET, self.K)
         env = RouteChoice(problem_instance)
         n_agents_per_od = env.n_of_agents_per_od
 
@@ -98,16 +98,14 @@ class Experiment:
         env.set_drivers(D)
 
         # sum of routes' costs along time (used to compute the averages)
-        routes_costs_sum = {od: [
-            0.0 for _ in range(problem_instance.get_route_set_size(od))
-        ] for od in problem_instance.get_OD_pairs()}
-        routes_costs_min = {od: 0.0 for od in problem_instance.get_OD_pairs()}
+        routes_costs_sum = {od: [0.0 for _ in range(problem_instance.get_route_set_size(od))] for od in env.od_pairs}
+        routes_costs_min = {od: 0.0 for od in env.od_pairs}
 
         # sum of the average regret per OD pair (used to measure the averages through time)
         # for each OD pair, it stores a tuple [w, x, y, z], with w the average
         # real regret, x the average estimated regret, y the average absolute
         # difference between them, and z the relative difference between them
-        sum_regrets = {od: [0.0, 0.0, 0.0, 0.0] for od in problem_instance.get_OD_pairs()}
+        sum_regrets = {od: [0.0, 0.0, 0.0, 0.0] for od in env.od_pairs}
 
         statistics = Statistics(env.problem_instance, env.drivers, self.ITERATIONS, True, True, True)
 
@@ -134,7 +132,8 @@ class Experiment:
 
             # Update strategy (Q table)
             for i, d in enumerate(env.drivers):
-                d.update_strategy(obs_n_[i], reward_n[i], alpha=self.ALPHA, regret_as_cost=True)
+                cost = reward_n[i][0]
+                d.update_strategy(obs_n_[i], cost, alpha=self.ALPHA)
 
             # Update alpha
             if self.ALPHA > self.MIN_ALPHA:
@@ -146,7 +145,7 @@ class Experiment:
             # compute the episode statistics
 
             # update the sum of routes' costs (used to compute the averages)
-            for od in problem_instance.get_OD_pairs():
+            for od in env.od_pairs:
                 for r in range(int(problem_instance.get_route_set_size(od))):
                     cc = problem_instance.get_route(od, r).get_cost(True)
                     routes_costs_sum[od][r] += cc

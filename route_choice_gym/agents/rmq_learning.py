@@ -1,10 +1,9 @@
-
 from route_choice_gym.core import DriverAgent, Policy
 
 
 class RMQLearning(DriverAgent):
 
-    def __init__(self, od_pair, actions, flow=1.0, extrapolate_costs=True, policy: Policy = None):
+    def __init__(self, od_pair, actions, flow=1.0, preference_money_over_time=0.5, extrapolate_costs=True, policy: Policy = None):
         super(RMQLearning, self).__init__()
 
         self.__od_pair = od_pair
@@ -14,6 +13,10 @@ class RMQLearning(DriverAgent):
 
         # Flow controlled by the agent (default is 1.0)
         self.__flow = flow
+
+        # the time-money trade-off (the higher the preference of money over time is, the more the agent prefers
+        # saving money or, alternatively, the less it cares about travelling fast)
+        self.__preference_money_over_time = preference_money_over_time
 
         # Strategy (Q table)
         self.__strategy = {a: 0.0 for a in self.__actions}
@@ -55,14 +58,17 @@ class RMQLearning(DriverAgent):
     def get_od_pair(self):
         return self.__od_pair
 
+    def get_flow(self):
+        return self.__flow
+
+    def get_preference_money_over_time(self):
+        return self.__preference_money_over_time
+
     def get_last_action(self):
         return self.__last_action
 
     def get_strategy(self):
         return self.__strategy
-
-    def get_flow(self):
-        return self.__flow
 
     # Calculate the driver's estimated regret
     def __estimate_regret(self):
@@ -75,18 +81,18 @@ class RMQLearning(DriverAgent):
             else:
                 self.__estimated_action_regret[a] = self.__history_actions_costs[a][3] - self.__min_avg_cost
 
-    # calculate the real regret given the real minimum average cost
-    def update_real_regret(self, real_min_avg: float):
-        self.__real_regret = self.get_average_cost() - real_min_avg
-
-    def get_real_regret(self):
-        return self.__real_regret
-
     def get_estimated_regret(self, action: int = None):
         if action is None:
             return self.__estimated_regret
         else:
             return self.__estimated_action_regret[action]
+
+    def get_real_regret(self):
+        return self.__real_regret
+
+    # calculate the real regret given the real minimum average cost
+    def update_real_regret(self, real_min_avg: float):
+        self.__real_regret = self.get_average_cost() - real_min_avg
 
     def get_last_cost(self):
         return self.__history_actions_costs[self.__last_action][4]
@@ -101,7 +107,7 @@ class RMQLearning(DriverAgent):
         self.__last_action = self.__policy.act(obs, d=self)
         return self.__last_action
 
-    def update_strategy(self, obs_: int, cost: float, alpha: float = None, regret_as_cost: bool = False) -> None:
+    def update_strategy(self, obs_: int, cost: float, alpha: float = None) -> None:
         """
 
         :param obs_:
@@ -150,8 +156,7 @@ class RMQLearning(DriverAgent):
 
         # Update the regret
         self.__estimate_regret()
-        if regret_as_cost:
-            cost = self.get_estimated_regret(self.__last_action)
+        cost = self.get_estimated_regret(self.__last_action)
 
         # Normalize cost (Reward)
         normalised_utility = 1 - cost

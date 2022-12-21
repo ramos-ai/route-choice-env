@@ -1,5 +1,6 @@
+import os
 from py_expression_eval import Parser
-from sympy import diff, symbols
+from sympy import diff
 
 
 # =======================================================================
@@ -77,7 +78,7 @@ class ProblemInstance:
     def __create_graph(self, network_name):
 
         OD_entries = []
-        for line in open('./route_choice_gym/networks/%s.net' % network_name, 'r'):
+        for line in open(f'{os.path.dirname(os.path.abspath(__file__))}/networks/%s.net' % network_name, 'r'):
 
             # ignore \n
             line = line.rstrip()
@@ -111,7 +112,7 @@ class ProblemInstance:
         F = {}  # cost functions
         normalisation_factor = float('-inf')
         lineid = 0
-        for line in open('./route_choice_gym/networks/%s.net' % network_name, 'r'):
+        for line in open(f'{os.path.dirname(os.path.abspath(__file__))}/networks/%s.net' % network_name, 'r'):
 
             lineid += 1
 
@@ -143,8 +144,7 @@ class ProblemInstance:
 
                 # compute the derivative of the function (for tolling)
                 expr_deriv = str(diff(expr, params[0]))  # compute derivative
-                expr_deriv = expr_deriv.replace('**', '^').replace(' ',
-                                                                   '')  # convert syntax (from sympy to py_expression_eval)
+                expr_deriv = expr_deriv.replace('**', '^').replace(' ', '')  # convert syntax (from sympy to py_expression_eval)
                 function_deriv = Parser().parse(expr_deriv)  # create the function
 
                 # handle the case where the parameter is not in the formula
@@ -171,16 +171,17 @@ class ProblemInstance:
 
                 # process the function
                 func_tuple = F[taglist[4]]  # get the corresponding function
-                param_values = dict(zip(func_tuple[1], map(float, taglist[
-                                                                  5:])))  # associate constants and values specified in the line (in order of occurrence)
+                param_values = dict(zip(func_tuple[1], map(float, taglist[5:])))  # associate constants and values specified in the line (in order of occurrence)
                 function = Parser().parse(func_tuple[2])  # create the function
                 function = function.simplify(param_values)  # replace constants
 
                 # compute the function's first derivative w.r.t. the parameter
                 function_deriv = Parser().parse(func_tuple[3])
                 function_deriv = function_deriv.simplify(param_values)
-                # check for zero division error, which shall happen when the parameter is a divisor (e.g., the BPR function)
-                # Note: this is just a warning, since in this case we just need to assume the marginal cost to be zero (as done later, at link's marginal cost evaluation)
+                # check for zero division error, which shall happen when the parameter is a divisor
+                # (e.g., the BPR function)
+                # Note: this is just a warning, since in this case we just need to assume the marginal cost to be zero
+                # (as done later, at link's marginal cost evaluation)
                 try:
                     function_deriv.evaluate({func_tuple[0]: 0.0})
                 except ZeroDivisionError:
@@ -195,8 +196,7 @@ class ProblemInstance:
                 self.__L[link_name] = Link(link_name, taglist[2], taglist[3], function, function_deriv, func_tuple[0])
                 if taglist[0] == 'edge':
                     link_name = '%s-%s' % (taglist[3], taglist[2])
-                    self.__L[link_name] = Link(link_name, taglist[3], taglist[2], function, function_deriv,
-                                               func_tuple[0])
+                    self.__L[link_name] = Link(link_name, taglist[3], taglist[2], function, function_deriv, func_tuple[0])
 
                 # store the greatest free flow time (used to normalise the links' costs)
                 v = function.evaluate({func_tuple[0]: total_flow})
@@ -226,7 +226,7 @@ class ProblemInstance:
     def __create_routes(self, network_name, routes_per_OD=None, alt_route_file_name=None):
 
         # fname =
-        with open(f'./route_choice_gym/networks/{network_name}.routes', 'r') as f:
+        with open(f'{os.path.dirname(os.path.abspath(__file__))}/networks/{network_name}.routes', 'r') as f:
             if alt_route_file_name is None:
                 fname = alt_route_file_name  # useful when an alternative route files must be used
             # f = open(fname, 'r')
@@ -311,8 +311,9 @@ class ProblemInstance:
                 if flow > 0.0:
                     route = self.__routes[self.__OD_matrix.get_order_OD(i_od)][i_od_route]
                     for link in route.get_links():
-                        self.__L[link].add_time_flexibility(
-                            time_flexibility)  # time_flexibility needs to be added before flow
+
+                        # time_flexibility needs to be added before flow
+                        self.__L[link].add_time_flexibility(time_flexibility)
                         self.__L[link].add_flow(flow)
 
         # update the routes' costs and compute the (normalised and non-normalised)
@@ -364,8 +365,9 @@ class Link:
         self.__cost_function_deriv = cost_function_deriv
         self.__param_name = param_name
 
-        # store the sum of time flexibility of all drivers using the
-        # present link (required for computing marginal cost tolls)
+        # store the sum of time flexibility of all drivers using the present link
+        # (required for computing marginal cost tolls)
+
         # EXPLANATION: following the MCT definition, the toll on a link is
         # 		flow * vdf_derivative
         # a.k.a. the marginal cost; my generalised version includes a time
