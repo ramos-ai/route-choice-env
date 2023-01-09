@@ -1,10 +1,10 @@
 from route_choice_gym.core import DriverAgent, Policy
 
 
-class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learning
+class TQLearning(DriverAgent):  # Implementation of Toll-based Q-Learning
 
-    def __init__(self, od_pair, actions, flow=1.0, preference_money_over_time=0.5, extrapolate_costs=True, policy: Policy = None):
-        super(RMQLearning, self).__init__()
+    def __init__(self, od_pair, actions, flow=1.0, preference_money_over_time=0.5, extrapolate_costs=False, policy: Policy = None):
+        super(TQLearning, self).__init__()
 
         self.__od_pair = od_pair
         self.__actions = actions
@@ -40,6 +40,9 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
         self.__history_actions_costs = {
             a: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for a in actions
         }
+
+        # Current toll dues
+        self.__toll_dues = 0.0
 
         # Estimated regret
         self.__estimated_regret = None
@@ -86,28 +89,35 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
     def update_strategy(self, obs_: tuple, reward: float, alpha: float = None) -> None:
         """
         :param obs_: tuple of [travel_time, additional_cost]
-        :param reward: -cost
+        :param reward: -(cost + toll)
         :param alpha: learning rate
 
         :return: None
         """
         travel_time = obs_[0]
+        free_flow_travel_time = obs_[1]  # additional_cost: in the case of TQLearning, it is the free_flow_travel_time
 
-        # Estimate regret, compute reward and update strategy (Q-table)
-        cost = self.__compute_utility()
+        # Compute toll dues
+        self.compute_toll_dues(travel_time, free_flow_travel_time)
+
+        # Compute utility (cost) and update strategy (Q-table)
+        cost = self.__compute_utility(travel_time)
         self.__update_strategy_q_learning(cost, alpha)
 
         # Update agent history
         self.__update_history(cost, travel_time)
 
-    def __compute_utility(self) -> float:
-        """
-        For the RMQLearning algorithm, we first estimate the regret and use the estimated regret as learning signal.
-
-        :return: estimated regret for action taken (reward)
-        """
+        # Estimate regret
         self.__estimate_regret()
-        return self.get_estimated_regret(self.__last_action)
+
+    def __compute_utility(self, travel_time: float) -> float:
+        """
+        For the TQLearning algorithm, we compute the utility (cost) considering travel time and toll and use it as
+        learning signal.
+
+        :return: cost (reward)
+        """
+        return travel_time + self.__toll_dues
 
     # Q-learning (stateless, so the gamma parameter is not required)
     def __update_strategy_q_learning(self, utility, alpha):
@@ -149,6 +159,19 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
 
             if avg_cost < self.__min_avg_cost:
                 self.__min_avg_cost = avg_cost
+
+    # -- Tolling functions
+    # ----------------------------------------
+    def get_toll_dues(self):
+        return self.__toll_dues
+
+    def compute_toll_dues(self, travel_time: float, free_flow_travel_time: float):
+        # MCT with preferences
+        # Note 1: this is equivalent to the original MCT if the preference parameter is 0.5 for all agents
+        # Note 2: the expression is multiplied by 2 to make it fully compatible with the original MCT formulation
+        #         (and to make the code retro-compatible with previous algorithms and validations)
+        self.__toll_dues = travel_time - free_flow_travel_time  # marginal cost
+        return self.__toll_dues
 
     # -- Regret functions
     # ----------------------------------------

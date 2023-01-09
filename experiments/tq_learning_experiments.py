@@ -8,7 +8,7 @@ from route_choice_gym.route_choice import RouteChoice
 from route_choice_gym.problem import ProblemInstance
 from route_choice_gym.statistics import Statistics
 
-from route_choice_gym.agents.rmq_learning import RMQLearning
+from route_choice_gym.agents.tq_learning import TQLearning
 from route_choice_gym.policy import EpsilonGreedy
 
 
@@ -50,7 +50,7 @@ class Experiment:
 
         futures = {}
         results = {}
-        with ProcessPoolExecutor(max_workers=6) as ex:
+        with ProcessPoolExecutor(max_workers=10) as ex:
             for rep in range(1, self.REP+1):
                 futures[rep] = ex.submit(self.run_replication, r_id=rep)
 
@@ -78,9 +78,13 @@ class Experiment:
         print(f' algorithm={self.ALG}, network={self.NET}, replication={r_id}, K={self.K}, decay={self.DECAY}')
         print('========================================================================\n')
 
+        alt_route_filename = None
+        if self.NET in ['BBraess_1_2100_10_c1_2100', 'BBraess_3_2100_10_c1_900', 'BBraess_5_2100_10_c1_900', 'BBraess_7_2100_10_c1_900']:
+            alt_route_filename = f"{self.NET}.TRC.routes"
+
         # initiate environment
-        problem_instance = ProblemInstance(self.NET, self.K)
-        env = RouteChoice(problem_instance)
+        problem_instance = ProblemInstance(self.NET, self.K, alt_route_filename)
+        env = RouteChoice(problem_instance, tolling=True)
         n_agents_per_od = env.n_of_agents_per_od
 
         # create agents
@@ -90,7 +94,7 @@ class Experiment:
 
             actions = list(range(env.action_space[od].n))
             for _ in range(n):
-                D.append(RMQLearning(od, actions, policy=policy))
+                D.append(TQLearning(od, actions, policy=policy))
 
         # assign drivers to environment
         env.set_drivers(D)
@@ -177,7 +181,7 @@ def main():
         for net in _exp['net']:
             for k in _exp['k']:
                 for decay in _exp['decays']:
-                    experiments.append(Experiment(_id, 'RMQLearning', _exp['episodes'], net, k, decay, _exp['rep']))
+                    experiments.append(Experiment(_id, 'TQLearning', _exp['episodes'], net, k, decay, _exp['rep']))
                     _id += 1
 
     global N_EXPERIMENTS

@@ -1,22 +1,9 @@
+from dataclasses import dataclass
 
-class DriverAgent(object):
-    def __init__(self):
-        pass
 
-    def get_od_pair(self) -> str:
-        raise NotImplementedError
-
-    def get_flow(self) -> float:
-        raise NotImplementedError
-
-    def get_preference_money_over_time(self) -> float:
-        raise NotImplementedError
-
-    def get_last_action(self) -> int:
-        raise NotImplementedError
-
-    def get_strategy(self):
-        raise NotImplementedError
+@dataclass
+class Observation:
+    cost: float
 
 
 class Policy(object):
@@ -27,4 +14,42 @@ class Policy(object):
         raise NotImplementedError
 
     def update_policy(self, **kwargs):
+        raise NotImplementedError
+
+
+class TollingStrategy(object):
+
+    @staticmethod
+    def compute_toll(cost, additional_cost=0.0, time_flexibility=0.0):
+        raise NotImplementedError
+
+    @staticmethod
+    def compute_cost(cost, additional_cost=0.0, time_flexibility=0.0, toll_dues=0.0):
+        raise NotImplementedError
+
+
+class DriverAgent(object):
+    __actions: list
+    __flow: float
+    __last_action: int
+    __od_pair: str
+    __preference_money_over_time: float
+    __strategy: dict
+
+    def get_flow(self) -> float:
+        raise NotImplementedError
+
+    def get_last_action(self) -> int:
+        raise NotImplementedError
+
+    def get_od_pair(self) -> str:
+        raise NotImplementedError
+
+    def get_preference_money_over_time(self) -> float:
+        raise NotImplementedError
+
+    def get_strategy(self):
+        raise NotImplementedError
+
+    def choose_action(self, obs) -> int:
         raise NotImplementedError

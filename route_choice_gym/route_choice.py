@@ -7,6 +7,9 @@ from typing import List
 from route_choice_gym.core import DriverAgent
 from route_choice_gym.problem import ProblemInstance
 
+from route_choice_gym.agents.rmq_learning import RMQLearning
+from route_choice_gym.agents.tq_learning import TQLearning
+
 
 class RouteChoice(gym.Env):
     """
@@ -42,6 +45,7 @@ class RouteChoice(gym.Env):
         self.__tolling = tolling
 
         self.__revenue_redistribution_rate = revenue_redistribution_rate
+        self.__tolls_share_per_od = []
 
         self.__solution = list()
         self.__solution_w_preferences = list()
@@ -52,6 +56,10 @@ class RouteChoice(gym.Env):
 
         self.__avg_cost = 0.0
         self.__normalised_avg_cost = 0.0
+
+        # sum of routes' costs along time (used to compute the averages)
+        self.__routes_costs_sum = {od: [0.0 for _ in range(self.__problem_instance.get_route_set_size(od))] for od in self.od_pairs}
+        self.__routes_costs_min = {od: 0.0 for od in self.od_pairs}
 
         # n_of_agents_per_od and action_space are both dictionary, mapping from OD pairs
         self.n_of_agents_per_od = {}
@@ -70,11 +78,13 @@ class RouteChoice(gym.Env):
             # for r in self.__problem_instance.get_routes(od):
             #     initial_costs.append(r.get_cost(self.__normalize_costs))
 
+        self.__iteration = 0
+
     def set_drivers(self, drivers: List[DriverAgent]):
         if isinstance(drivers[0], DriverAgent) and len(drivers) == self.n_agents:
             self.drivers = drivers
 
-    def step(self, action_n):
+    def step(self, action_n: list):
         """
         This function makes a step in the environment. It receives an array of actions taken by the agents.
 
@@ -94,6 +104,7 @@ class RouteChoice(gym.Env):
         reward_n = []
         terminal_n = []
 
+        # Evaluate solution based on routes taken and flow of drivers
         self.__solution = self.__problem_instance.get_empty_solution()
         self.__solution_w_preferences = self.__problem_instance.get_empty_solution()
 
@@ -102,47 +113,24 @@ class RouteChoice(gym.Env):
             self.__solution[od_order][action_n[i]] += d.get_flow()
             self.__solution_w_preferences[od_order][action_n[i]] += d.get_flow() * (1 - d.get_preference_money_over_time())
 
-        self.__avg_cost, self.__normalised_avg_cost = self.__problem_instance.evaluate_assignment(self.__solution, self.__solution_w_preferences)
+        self.__avg_travel_time, self.__normalised_avg_travel_time = self.__problem_instance.evaluate_assignment(self.__solution, self.__solution_w_preferences)
 
-        # if self.__tolling:
+        # Update the sum of routes' costs (used to compute the averages)
+        for od in self.od_pairs:
+            for r in range(int(self.__problem_instance.get_route_set_size(od))):
+                cc = self.__problem_instance.get_route(od, r).get_cost(True)
+                if self.__tolling:
+                    cc = 2 * cc - self.__problem_instance.get_route(od, r).get_free_flow_travel_time(self.__normalize_costs)
+                self.__routes_costs_sum[od][r] += cc
+            self.__routes_costs_min[od] = min(self.__routes_costs_sum[od]) / (self.__iteration + 1)
 
-        #    if self.__revenue_redistribution_rate > 0.0:
-        #        tolls_share_per_od = [0.0 for _ in range(len(self.od_pairs))]
+        self.__iteration += 1
 
-        #    for d in self.drivers:
-
-        #        route = self.__problem_instance.get_route(d.get_OD_pair(), d.get_last_action())
-
-        #        # compute the cost
-        #        cost = self.__get_cost(d)
-
-        #        # toll-based methods required additional values to compute rewards:
-        #        # weighted MCT needs the weighted marginal costs
-        #        if self.__weighted_MCT:
-        #            additional_cost = route.get_weighted_marginal_cost(self.__normalize_costs)
-        #        # other methods need the free flow travel time
-        #        else:
-        #            additional_cost = route.get_free_flow_travel_time(self.__normalize_costs)
-
-        #        # compute the toll
-        #        toll = d.compute_toll_dues(cost, additional_cost)
-
-        #        # update the total revenue
-        #        if self.__revenue_redistribution_rate > 0.0:
-        #            od = self.__problem_instance.get_OD_order(d.get_OD_pair())
-        #            tolls_share_per_od[od] += toll
-
-        #    # compute the share to be redistributed with the agents
-        #    if self.__revenue_redistribution_rate > 0.0:
-        #        for od in self.od_pairs:
-        #            od_order: int = self.__problem_instance.get_OD_order(od)
-        #            tolls_share_per_od[od_order] = (tolls_share_per_od[od_order] * self.__revenue_redistribution_rate) / self.__problem_instance.get_OD_flow(od)
-
+        # Assign
         for d in self.drivers:
             obs_n.append(self.__get_obs(d))
             reward_n.append(self.__get_reward(d))
             terminal_n.append(True)  # receives True because of the stateless nature of the problem
-
         return obs_n, reward_n, terminal_n
 
     def reset(self, *, seed=None, options=None):
@@ -151,14 +139,16 @@ class RouteChoice(gym.Env):
         self.__solution = self.__problem_instance.get_empty_solution()
         self.__solution_w_preferences = self.__problem_instance.get_empty_solution()
 
+        self.__iteration = 0
+
         obs_n = []
         for _ in self.drivers:
             obs_n.append(0.0)
         return obs_n
 
     @property
-    def avg_cost(self):
-        return self.__avg_cost
+    def avg_travel_time(self):
+        return self.__avg_travel_time
 
     @property
     def od_pairs(self):
@@ -172,34 +162,45 @@ class RouteChoice(gym.Env):
     def solution(self):
         return self.__solution
 
+    def get_routes_costs_min(self, od):
+        return self.__routes_costs_min[od]
+
     def __get_obs(self, d):
         """
+        Observation is a tuple of [travel_cost, additional_cost]
+
+        Parameter additional_cost depends on the requirements of the agent:
+        - For RMQLearning, it is 0.0
+        - For TQLearning, it is the free_flow_travel_time
+        - For GTQLearning, it is the ...
+
         :param d: Driver instance
         :return: obs
         """
-        od_order = self.__problem_instance.get_OD_order(d.get_od_pair())
-        obs = self.__solution[od_order][d.get_last_action()]
-        return obs
+        travel_cost = self.__get_travel_time(d)
+        additional_cost = 0.0
+
+        if isinstance(d, TQLearning):
+            route = self.__problem_instance.get_route(d.get_od_pair(), d.get_last_action())
+            additional_cost = route.get_free_flow_travel_time(self.__normalize_costs)
+
+        return [travel_cost, additional_cost]
 
     def __get_reward(self, d):
         """
         :param d: Driver instance
         :return: reward on the route choice problem is the cost of taking a route
         """
-        if self.__tolling:
-            reward = (self.__get_cost(d), self.__get_toll_dues(d))
-        else:
-            reward = (self.__get_cost(d), 0.0)
-        return reward
+        return 0.0
 
-    def __get_cost(self, d):
+    def __get_travel_time(self, d):
         """
         :param d: Driver instance
         :return: route cost
         """
         route = self.__problem_instance.get_route(d.get_od_pair(), d.get_last_action())
-        cost = route.get_cost(self.__normalize_costs)
-        return cost
+        travel_time = route.get_cost(self.__normalize_costs)
+        return travel_time
 
     def __get_toll_dues(self, d):
         """

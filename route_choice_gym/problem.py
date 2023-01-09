@@ -225,12 +225,12 @@ class ProblemInstance:
     # read the set of routes from a file
     def __create_routes(self, network_name, routes_per_OD=None, alt_route_file_name=None):
 
-        # fname =
-        with open(f'{os.path.dirname(os.path.abspath(__file__))}/networks/{network_name}.routes', 'r') as f:
-            if alt_route_file_name is None:
-                fname = alt_route_file_name  # useful when an alternative route files must be used
-            # f = open(fname, 'r')
+        if alt_route_file_name is not None:
+            fname = f'{os.path.dirname(os.path.abspath(__file__))}/networks/{alt_route_file_name}'
+        else:
+            fname = f'{os.path.dirname(os.path.abspath(__file__))}/networks/{network_name}.routes'
 
+        with open(fname, 'r') as f:
             self.__normalisation_factor_routes = float('-inf')
 
             for line in f:
@@ -294,12 +294,10 @@ class ProblemInstance:
     # - solution_time_flexibility contains the aggregate time flexibility of agents (useful for tolling)
     # - check_consistency checks if the assignment is valid w.r.t. the total flow of the problem instance
     def evaluate_assignment(self, solution, solution_time_flexibility, check_consistency=True):
-
         # check if the solution is valid
         if check_consistency:
             if sum([sum(x) for x in solution]) != self.get_total_flow():
-                print(
-                    f'[WARNING] The solution is not valid! (current flow {sum([sum(x) for x in solution])} differs from the expected one {self.get_total_flow()})')
+                print(f'[WARNING] The solution is not valid! (current flow {sum([sum(x) for x in solution])} differs from the expected one {self.get_total_flow()})')
 
         self.reset_graph()
 

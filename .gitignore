@@ -8,5 +8,10 @@
 .env
 venv/
 
-# cache
+# Cache
 __pycache__/
+
+# Backup
+experiments/backup
+experiments/results
+tests
