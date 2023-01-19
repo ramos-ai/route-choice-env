@@ -78,22 +78,25 @@ class Experiment:
         print(f' algorithm={self.ALG}, network={self.NET}, replication={r_id}, K={self.K}, decay={self.DECAY}')
         print('========================================================================\n')
 
-        # initiate environment
+        # create network graph and routes
         problem_instance = ProblemInstance(self.NET, self.K)
+
+        # initiate environment
         env = RouteChoice(problem_instance)
         n_agents_per_od = env.n_of_agents_per_od
 
         # create agents
-        D = []
+        driver_agents = []
         policy = EpsilonGreedy(self.EPSILON, self.MIN_EPSILON)
         for od, n in n_agents_per_od.items():
 
             actions = list(range(env.action_space[od].n))
+            free_flow_travel_times = env.get_free_flow_travel_times(od)
             for _ in range(n):
-                D.append(RMQLearning(od, actions, policy=policy))
+                driver_agents.append(RMQLearning(od, actions, initial_costs=free_flow_travel_times, policy=policy))
 
         # assign drivers to environment
-        env.set_drivers(D)
+        env.set_drivers(driver_agents)
 
         # sum of routes' costs along time (used to compute the averages)
         routes_costs_sum = {od: [0.0 for _ in range(problem_instance.get_route_set_size(od))] for od in env.od_pairs}
@@ -117,7 +120,7 @@ class Experiment:
             for i, d in enumerate(env.drivers):
                 act_n.append(d.choose_action(obs_n[i]))
 
-            # Update policy
+            # update global policy
             policy.update_policy(self.EPSILON_DECAY)
 
             # step environment
@@ -127,7 +130,7 @@ class Experiment:
             if v < best:
                 best = v
 
-            # Update strategy (Q table)
+            # update strategy (Q table)
             for i, d in enumerate(env.drivers):
                 d.update_strategy(obs_n_[i], reward_n[i], alpha=self.ALPHA)
 

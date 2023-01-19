@@ -1,12 +1,12 @@
-from dataclasses import dataclass
-
-
-@dataclass
-class Observation:
-    cost: float
 
 
 class Policy(object):
+    """
+        Interface for a generic policy.
+
+        It defines functions to implement a policy for a driver agent.
+    """
+
     def __init__(self):
         pass
 
@@ -29,6 +29,12 @@ class TollingStrategy(object):
 
 
 class DriverAgent(object):
+    """
+        Interface for a generic driver agent.
+
+        It defines attributes and functions to implement an agent that interacts with the route choice environment.
+    """
+
     __actions: list
     __flow: float
     __last_action: int

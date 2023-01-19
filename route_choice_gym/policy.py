@@ -5,6 +5,11 @@ from route_choice_gym.core import DriverAgent, Policy
 
 
 class Random(Policy):
+    """
+        Random policy class.
+
+        Chooses action at random.
+    """
 
     def __init__(self, actions: list):
         super(Random, self).__init__()

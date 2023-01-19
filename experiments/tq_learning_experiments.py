@@ -50,7 +50,7 @@ class Experiment:
 
         futures = {}
         results = {}
-        with ProcessPoolExecutor(max_workers=10) as ex:
+        with ProcessPoolExecutor(max_workers=6) as ex:
             for rep in range(1, self.REP+1):
                 futures[rep] = ex.submit(self.run_replication, r_id=rep)
 
@@ -82,22 +82,24 @@ class Experiment:
         if self.NET in ['BBraess_1_2100_10_c1_2100', 'BBraess_3_2100_10_c1_900', 'BBraess_5_2100_10_c1_900', 'BBraess_7_2100_10_c1_900']:
             alt_route_filename = f"{self.NET}.TRC.routes"
 
-        # initiate environment
+        # create network graph and routes
         problem_instance = ProblemInstance(self.NET, self.K, alt_route_filename)
+
+        # initiate environment
         env = RouteChoice(problem_instance, tolling=True)
         n_agents_per_od = env.n_of_agents_per_od
 
         # create agents
-        D = []
+        driver_agents = []
         policy = EpsilonGreedy(self.EPSILON, self.MIN_EPSILON)
         for od, n in n_agents_per_od.items():
 
             actions = list(range(env.action_space[od].n))
             for _ in range(n):
-                D.append(TQLearning(od, actions, policy=policy))
+                driver_agents.append(TQLearning(od, actions, policy=policy))
 
         # assign drivers to environment
-        env.set_drivers(D)
+        env.set_drivers(driver_agents)
 
         # sum of routes' costs along time (used to compute the averages)
         routes_costs_sum = {od: [0.0 for _ in range(problem_instance.get_route_set_size(od))] for od in env.od_pairs}

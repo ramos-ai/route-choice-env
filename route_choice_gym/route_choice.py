@@ -7,18 +7,15 @@ from typing import List
 from route_choice_gym.core import DriverAgent
 from route_choice_gym.problem import ProblemInstance
 
-from route_choice_gym.agents.rmq_learning import RMQLearning
-from route_choice_gym.agents.tq_learning import TQLearning
-
 
 class RouteChoice(gym.Env):
     """
     Definitions
         obs:
-            is the flow of vehicles on a route taken by the driver.
+            is the free flow travel-time of route chosen by the agent
 
         reward:
-            is the negative of the cost of a route.
+            is the travel cost experienced by the agent
 
     Structures
         act_n:
@@ -143,7 +140,7 @@ class RouteChoice(gym.Env):
 
         obs_n = []
         for _ in self.drivers:
-            obs_n.append(0.0)
+            obs_n.append([0.0, 0.0])
         return obs_n
 
     @property
@@ -162,45 +159,44 @@ class RouteChoice(gym.Env):
     def solution(self):
         return self.__solution
 
+    def get_free_flow_travel_times(self, od):
+        free_flow_travel_times = []
+        for r in self.__problem_instance.get_routes(od):
+            free_flow_travel_times.append(r.get_cost(self.__normalize_costs))
+        return free_flow_travel_times
+
     def get_routes_costs_min(self, od):
         return self.__routes_costs_min[od]
 
     def __get_obs(self, d):
         """
-        Observation is a tuple of [travel_cost, additional_cost]
-
-        Parameter additional_cost depends on the requirements of the agent:
-        - For RMQLearning, it is 0.0
-        - For TQLearning, it is the free_flow_travel_time
-        - For GTQLearning, it is the ...
+        Observation is the free flow travel-time of the route taken by the agent
 
         :param d: Driver instance
         :return: obs
         """
-        travel_cost = self.__get_travel_time(d)
-        additional_cost = 0.0
-
-        if isinstance(d, TQLearning):
-            route = self.__problem_instance.get_route(d.get_od_pair(), d.get_last_action())
-            additional_cost = route.get_free_flow_travel_time(self.__normalize_costs)
-
-        return [travel_cost, additional_cost]
+        route = self.__problem_instance.get_route(d.get_od_pair(), d.get_last_action())
+        free_flow_travel_time = route.get_free_flow_travel_time(self.__normalize_costs)
+        return free_flow_travel_time
 
     def __get_reward(self, d):
         """
-        :param d: Driver instance
-        :return: reward on the route choice problem is the cost of taking a route
-        """
-        return 0.0
+        Reward is the experienced travel cost by the agent.
 
-    def __get_travel_time(self, d):
+        :param d: Driver instance
+        :return: reward
+        """
+        travel_cost = self.__get_travel_cost(d)
+        return travel_cost
+
+    def __get_travel_cost(self, d):
         """
         :param d: Driver instance
-        :return: route cost
+        :return: driver's travel time
         """
         route = self.__problem_instance.get_route(d.get_od_pair(), d.get_last_action())
-        travel_time = route.get_cost(self.__normalize_costs)
-        return travel_time
+        cost = route.get_cost(self.__normalize_costs)
+        return cost
 
     def __get_toll_dues(self, d):
         """

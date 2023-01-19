@@ -3,7 +3,8 @@ from route_choice_gym.core import DriverAgent, Policy
 
 class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learning
 
-    def __init__(self, od_pair, actions, flow=1.0, preference_money_over_time=0.5, extrapolate_costs=True, policy: Policy = None):
+    def __init__(self, od_pair, actions, flow=1.0, preference_money_over_time=0.5, initial_costs=[],
+                 extrapolate_costs=True, policy: Policy = None):
         super(RMQLearning, self).__init__()
 
         self.__od_pair = od_pair
@@ -38,7 +39,7 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
         # * last:               is the most updated cost of this action
         # * last_time:          is the most updated travel time of this action (useful for computing deltatolling)
         self.__history_actions_costs = {
-            a: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for a in actions
+            a: [0.0, 0.0, 0.0, 0.0, 0.0 if not initial_costs else initial_costs[a], 0.0] for a in actions
         }
 
         # Estimated regret
@@ -85,29 +86,28 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
 
     def update_strategy(self, obs_: tuple, reward: float, alpha: float = None) -> None:
         """
-        :param obs_: tuple of [travel_time, additional_cost]
-        :param reward: -cost
-        :param alpha: learning rate
+        This function does 3 things:
+        - updates agent's history
+        - estimate agent's regret using updated history
+        - updates agent's strategy (Q-table) using estimated regret
+
+        :param
+            obs_: tuple of [travel_cost, additional_cost]
+            reward: estimated regret
+            alpha: learning rate
 
         :return: None
         """
-        travel_time = obs_[0]
-
-        # Estimate regret, compute reward and update strategy (Q-table)
-        cost = self.__compute_utility()
-        self.__update_strategy_q_learning(cost, alpha)
+        # travel_cost = obs_[0]
+        travel_cost = reward
 
         # Update agent history
-        self.__update_history(cost, travel_time)
+        self.__update_history(travel_cost)
 
-    def __compute_utility(self) -> float:
-        """
-        For the RMQLearning algorithm, we first estimate the regret and use the estimated regret as learning signal.
-
-        :return: estimated regret for action taken (reward)
-        """
+        # Estimate regret, compute reward and update strategy (Q-table)
         self.__estimate_regret()
-        return self.get_estimated_regret(self.__last_action)
+        cost = self.get_estimated_regret(self.__last_action)
+        self.__update_strategy_q_learning(cost, alpha)
 
     # Q-learning (stateless, so the gamma parameter is not required)
     def __update_strategy_q_learning(self, utility, alpha):
@@ -115,7 +115,9 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
         self.__strategy[self.__last_action] = (1 - alpha) * self.__strategy[self.__last_action] + alpha * normalised_utility
 
     # History (we keen an internal history of agent actions, useful for strategy and computing reward)
-    def __update_history(self, cost: float, travel_time: float):
+    def __update_history(self, travel_time: float):
+        cost = travel_time
+
         # store the dictionary locally to improve performance
         self_hac = self.__history_actions_costs
 
@@ -124,28 +126,28 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
 
         # update the history of costs
         # Pt1: for the current action
-        self_hac[self.__last_action][0] += cost  # add current cost
-        self_hac[self.__last_action][1] += 1  # increment number of samples
-        self_hac[self.__last_action][4] = cost  # update last cost
-        self_hac[self.__last_action][5] = travel_time  # update most recent travel time of current taken action
+        self.__history_actions_costs[self.__last_action][0] += cost  # add current cost
+        self.__history_actions_costs[self.__last_action][1] += 1  # increment number of samples
+        self.__history_actions_costs[self.__last_action][4] = cost  # update last cost
+        self.__history_actions_costs[self.__last_action][5] = travel_time  # update most recent travel time of current taken action
 
         # Pt2: for all actions...
         self.__min_avg_cost = float('inf')
         for a in self_hac:
 
             # update the extrapolated sum
-            self_hac[a][2] += self_hac[a][4]  # add last cost to extrapolate estimation
+            self.__history_actions_costs[a][2] += self.__history_actions_costs[a][4]  # add last cost to extrapolate estimation
 
             # compute the average cost
             if self.__extrapolate_costs:
-                avg_cost = self_hac[a][2] / self.__iteration
+                avg_cost = self.__history_actions_costs[a][2] / self.__iteration
             else:
                 try:  # just to handle initial cases
-                    avg_cost = self_hac[a][0] / self_hac[a][1]
+                    avg_cost = self.__history_actions_costs[a][0] / self.__history_actions_costs[a][1]
                 except ZeroDivisionError:
                     avg_cost = 0
 
-            self_hac[a][3] = avg_cost
+            self.__history_actions_costs[a][3] = avg_cost
 
             if avg_cost < self.__min_avg_cost:
                 self.__min_avg_cost = avg_cost
