@@ -1,13 +1,13 @@
 
 from route_choice_gym.route_choice import RouteChoice
-from route_choice_gym.problem import ProblemInstance
+from route_choice_gym.problem import Network
 
 from route_choice_gym.agents.simple_driver import SimpleDriver
 from route_choice_gym.policy import Random
 
 
 def create_env():
-    P = ProblemInstance('OW')
+    P = Network('OW')
     return RouteChoice(P)
 
 

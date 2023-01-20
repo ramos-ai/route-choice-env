@@ -5,7 +5,7 @@ import timeit
 from concurrent.futures import ProcessPoolExecutor
 
 from route_choice_gym.route_choice import RouteChoice
-from route_choice_gym.problem import ProblemInstance
+from route_choice_gym.problem import Network
 from route_choice_gym.statistics import Statistics
 
 from route_choice_gym.agents.rmq_learning import RMQLearning
@@ -79,7 +79,7 @@ class Experiment:
         print('========================================================================\n')
 
         # create network graph and routes
-        problem_instance = ProblemInstance(self.NET, self.K)
+        problem_instance = Network(self.NET, self.K)
 
         # initiate environment
         env = RouteChoice(problem_instance)

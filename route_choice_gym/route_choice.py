@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import List
 
 from route_choice_gym.core import DriverAgent
-from route_choice_gym.problem import ProblemInstance
+from route_choice_gym.problem import Network
 
 
 class RouteChoice(gym.Env):
@@ -32,8 +32,14 @@ class RouteChoice(gym.Env):
 
     """
 
-    def __init__(self, problem_instance: ProblemInstance, agent_vehicles_factor=1.0, revenue_redistribution_rate=0.0,
-                 normalise_costs=True, tolling=False):
+    def __init__(
+            self,
+            problem_instance: Network,
+            agent_vehicles_factor=1.0,
+            revenue_redistribution_rate=0.0,
+            normalise_costs=True,
+            tolling=False
+    ):
 
         self.__problem_instance = problem_instance
         self.__problem_instance.reset_graph()

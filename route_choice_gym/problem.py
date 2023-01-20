@@ -5,7 +5,7 @@ from sympy import diff
 
 # =======================================================================
 
-class ProblemInstance:
+class Network:
 
     def __init__(self, network_name, routes_per_OD=None, alt_route_file_name=None):
 

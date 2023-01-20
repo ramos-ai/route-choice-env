@@ -5,7 +5,7 @@ import timeit
 from concurrent.futures import ProcessPoolExecutor
 
 from route_choice_gym.route_choice import RouteChoice
-from route_choice_gym.problem import ProblemInstance
+from route_choice_gym.problem import Network
 from route_choice_gym.statistics import Statistics
 
 from route_choice_gym.agents.tq_learning import TQLearning
@@ -83,7 +83,7 @@ class Experiment:
             alt_route_filename = f"{self.NET}.TRC.routes"
 
         # create network graph and routes
-        problem_instance = ProblemInstance(self.NET, self.K, alt_route_filename)
+        problem_instance = Network(self.NET, self.K, alt_route_filename)
 
         # initiate environment
         env = RouteChoice(problem_instance, tolling=True)

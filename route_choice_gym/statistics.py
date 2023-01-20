@@ -1,12 +1,12 @@
 from typing import List
 
 from route_choice_gym.core import DriverAgent
-from route_choice_gym.problem import ProblemInstance
+from route_choice_gym.problem import Network
 
 
 class Statistics(object):
 
-    def __init__(self, problem_instance: ProblemInstance, drivers: List[DriverAgent], iterations, stat_regret_diff,
+    def __init__(self, problem_instance: Network, drivers: List[DriverAgent], iterations, stat_regret_diff,
                  stat_all, print_od_pairs_every_episode: bool):
 
         self.__problem_instance = problem_instance  # problem instance
