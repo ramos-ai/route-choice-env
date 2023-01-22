@@ -34,10 +34,9 @@ class SimpleDriver(DriverAgent):
     def get_strategy(self):
         return self.__strategy
 
-    def choose_action(self, obs):
+    def choose_action(self):
         """
-        :param obs: observation of the agent
         :return: returns an action
         """
-        self.__last_action = self.__policy.act(obs, d=self)
+        self.__last_action = self.__policy.act(d=self)
         return self.__last_action

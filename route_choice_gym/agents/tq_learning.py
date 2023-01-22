@@ -81,12 +81,12 @@ class TQLearning(DriverAgent):  # Implementation of Toll-based Q-Learning
 
     # -- Agent functions
     # ----------------------------------------
-    def choose_action(self, obs: int):
+    def choose_action(self):
         self.__iteration += 1
-        self.__last_action = self.__policy.act(obs, d=self)
+        self.__last_action = self.__policy.act(d=self)
         return self.__last_action
 
-    def update_strategy(self, obs_: tuple, reward: float, alpha: float = None) -> None:
+    def update_strategy(self, obs_: tuple, reward: float, info: dict, alpha: float = None) -> None:
         """
         This function does 4 things:
         - computes the tolls for the agent using travel_time and free_flow_travel_time of route chosen
@@ -95,15 +95,15 @@ class TQLearning(DriverAgent):  # Implementation of Toll-based Q-Learning
         - updates agent's history
 
         :param
-            obs_: free_flow_travel_time of route chosen
+            obs_: None
             reward: travel_time of route chosen
             alpha: learning rate
+            info: dict with: free_flow_travel_time
 
         :return: None
         """
-        # travel_time = obs_[0]
         travel_time = reward
-        free_flow_travel_time = obs_  # additional_cost: in the case of TQLearning, it is the free_flow_travel_time
+        free_flow_travel_time = info['free_flow_travel_time']
 
         # Compute toll dues
         self.compute_toll_dues(travel_time, free_flow_travel_time)

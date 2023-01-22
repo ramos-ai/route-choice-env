@@ -16,10 +16,10 @@ class Random(Policy):
 
         self.__actions = actions
 
-    def act(self, obs, d: DriverAgent):
+    def act(self, d: DriverAgent):
         return random.choice(self.__actions)
 
-    def update_policy(self):
+    def update(self):
         pass
 
 
@@ -36,7 +36,7 @@ class EpsilonGreedy(Policy):
         self.__epsilon = epsilon
         self.__min_epsilon = min_epsilon
 
-    def act(self, obs, d: DriverAgent):
+    def act(self, d: DriverAgent):
 
         # Epsilon-greedy: choose the action with the highest probability with probability 1-epsilon
         # otherwise, choose any action uniformly at random
@@ -45,7 +45,7 @@ class EpsilonGreedy(Policy):
         else:
             return max(d.get_strategy(), key=d.get_strategy().get)
 
-    def update_policy(self, epsilon_decay: float = 0.99):
+    def update(self, epsilon_decay: float = 0.99):
         if self.__epsilon > self.__min_epsilon:
             self.__epsilon = self.__epsilon * epsilon_decay
         else:

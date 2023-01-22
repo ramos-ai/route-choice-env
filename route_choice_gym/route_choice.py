@@ -1,5 +1,5 @@
 import gym
-from gym.spaces import Dict, Discrete
+from gym.spaces import Dict, Discrete, Space
 
 from decimal import Decimal
 from typing import List
@@ -34,15 +34,15 @@ class RouteChoice(gym.Env):
 
     def __init__(
             self,
-            problem_instance: Network,
+            road_network: Network,
             agent_vehicles_factor=1.0,
             revenue_redistribution_rate=0.0,
             normalise_costs=True,
             tolling=False
     ):
 
-        self.__problem_instance = problem_instance
-        self.__problem_instance.reset_graph()
+        self.__road_network = road_network
+        self.__road_network.reset_graph()
 
         self.__normalize_costs = normalise_costs
         self.__tolling = tolling
@@ -61,25 +61,19 @@ class RouteChoice(gym.Env):
         self.__normalised_avg_cost = 0.0
 
         # sum of routes' costs along time (used to compute the averages)
-        self.__routes_costs_sum = {od: [0.0 for _ in range(self.__problem_instance.get_route_set_size(od))] for od in self.od_pairs}
+        self.__routes_costs_sum = {od: [0.0 for _ in range(self.__road_network.get_route_set_size(od))] for od in self.od_pairs}
         self.__routes_costs_min = {od: 0.0 for od in self.od_pairs}
 
-        # n_of_agents_per_od and action_space are both dictionary, mapping from OD pairs
+        self.observation_space = Space(None)
+        self.action_space = Dict()  # action space is mapped to OD pairs
         self.n_of_agents_per_od = {}
-        self.action_space = Dict()
-        # self.observation_space =  # TODO
 
         for od in self.od_pairs:
-            n_agents = int(Decimal(str(self.__problem_instance.get_OD_flow(od))) / Decimal(str(float(agent_vehicles_factor))))
+            n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(agent_vehicles_factor))))
 
             self.n_agents += n_agents
             self.n_of_agents_per_od[od] = n_agents
-            self.action_space[od] = Discrete(self.__problem_instance.get_route_set_size(od))
-
-            # Initial costs
-            # initial_costs = []
-            # for r in self.__problem_instance.get_routes(od):
-            #     initial_costs.append(r.get_cost(self.__normalize_costs))
+            self.action_space[od] = Discrete(self.__road_network.get_route_set_size(od))
 
         self.__iteration = 0
 
@@ -106,24 +100,25 @@ class RouteChoice(gym.Env):
         obs_n = []
         reward_n = []
         terminal_n = []
+        info_n = []
 
         # Evaluate solution based on routes taken and flow of drivers
-        self.__solution = self.__problem_instance.get_empty_solution()
-        self.__solution_w_preferences = self.__problem_instance.get_empty_solution()
+        self.__solution = self.__road_network.get_empty_solution()
+        self.__solution_w_preferences = self.__road_network.get_empty_solution()
 
         for i, d in enumerate(self.drivers):
-            od_order = self.__problem_instance.get_OD_order(d.get_od_pair())
+            od_order = self.__road_network.get_OD_order(d.get_od_pair())
             self.__solution[od_order][action_n[i]] += d.get_flow()
             self.__solution_w_preferences[od_order][action_n[i]] += d.get_flow() * (1 - d.get_preference_money_over_time())
 
-        self.__avg_travel_time, self.__normalised_avg_travel_time = self.__problem_instance.evaluate_assignment(self.__solution, self.__solution_w_preferences)
+        self.__avg_travel_time, self.__normalised_avg_travel_time = self.__road_network.evaluate_assignment(self.__solution, self.__solution_w_preferences)
 
         # Update the sum of routes' costs (used to compute the averages)
         for od in self.od_pairs:
-            for r in range(int(self.__problem_instance.get_route_set_size(od))):
-                cc = self.__problem_instance.get_route(od, r).get_cost(True)
+            for r in range(int(self.__road_network.get_route_set_size(od))):
+                cc = self.__road_network.get_route(od, r).get_cost(True)
                 if self.__tolling:
-                    cc = 2 * cc - self.__problem_instance.get_route(od, r).get_free_flow_travel_time(self.__normalize_costs)
+                    cc = 2 * cc - self.__road_network.get_route(od, r).get_free_flow_travel_time(self.__normalize_costs)
                 self.__routes_costs_sum[od][r] += cc
             self.__routes_costs_min[od] = min(self.__routes_costs_sum[od]) / (self.__iteration + 1)
 
@@ -131,23 +126,26 @@ class RouteChoice(gym.Env):
 
         # Assign
         for d in self.drivers:
-            obs_n.append(self.__get_obs(d))
+            obs_n.append(None)
             reward_n.append(self.__get_reward(d))
             terminal_n.append(True)  # receives True because of the stateless nature of the problem
-        return obs_n, reward_n, terminal_n
+            info_n.append(self.__get_info(d))
+        return obs_n, reward_n, terminal_n, info_n
 
     def reset(self, *, seed=None, options=None):
-        self.__problem_instance.reset_graph()
+        self.__road_network.reset_graph()
 
-        self.__solution = self.__problem_instance.get_empty_solution()
-        self.__solution_w_preferences = self.__problem_instance.get_empty_solution()
+        self.__solution = self.__road_network.get_empty_solution()
+        self.__solution_w_preferences = self.__road_network.get_empty_solution()
 
         self.__iteration = 0
 
         obs_n = []
-        for _ in self.drivers:
-            obs_n.append([0.0, 0.0])
-        return obs_n
+        info_n = []
+        for d in self.drivers:
+            obs_n.append(None)
+            info_n.append(self.__get_info(d))
+        return obs_n, info_n
 
     @property
     def avg_travel_time(self):
@@ -155,11 +153,11 @@ class RouteChoice(gym.Env):
 
     @property
     def od_pairs(self):
-        return self.__problem_instance.get_OD_pairs()
+        return self.__road_network.get_OD_pairs()
 
     @property
-    def problem_instance(self):
-        return self.__problem_instance
+    def road_network(self):
+        return self.__road_network
 
     @property
     def solution(self):
@@ -167,7 +165,7 @@ class RouteChoice(gym.Env):
 
     def get_free_flow_travel_times(self, od):
         free_flow_travel_times = []
-        for r in self.__problem_instance.get_routes(od):
+        for r in self.__road_network.get_routes(od):
             free_flow_travel_times.append(r.get_cost(self.__normalize_costs))
         return free_flow_travel_times
 
@@ -181,9 +179,7 @@ class RouteChoice(gym.Env):
         :param d: Driver instance
         :return: obs
         """
-        route = self.__problem_instance.get_route(d.get_od_pair(), d.get_last_action())
-        free_flow_travel_time = route.get_free_flow_travel_time(self.__normalize_costs)
-        return free_flow_travel_time
+        return
 
     def __get_reward(self, d):
         """
@@ -200,13 +196,20 @@ class RouteChoice(gym.Env):
         :param d: Driver instance
         :return: driver's travel time
         """
-        route = self.__problem_instance.get_route(d.get_od_pair(), d.get_last_action())
+        route = self.__road_network.get_route(d.get_od_pair(), d.get_last_action())
         cost = route.get_cost(self.__normalize_costs)
         return cost
 
-    def __get_toll_dues(self, d):
+    def __get_info(self, d):
         """
+        Info has some information about the route taken by the agent.
+
         :param d: Driver instance
-        :return: toll dues calculated by the driver
+        :return: obs
         """
-        raise NotImplementedError
+
+        route = self.__road_network.get_route(d.get_od_pair(), d.get_last_action())
+        info = {
+            "free_flow_travel_time": route.get_free_flow_travel_time(self.__normalize_costs)
+        }
+        return info

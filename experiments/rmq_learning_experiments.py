@@ -79,10 +79,10 @@ class Experiment:
         print('========================================================================\n')
 
         # create network graph and routes
-        problem_instance = Network(self.NET, self.K)
+        road_network = Network(self.NET, self.K)
 
         # initiate environment
-        env = RouteChoice(problem_instance)
+        env = RouteChoice(road_network)
         n_agents_per_od = env.n_of_agents_per_od
 
         # create agents
@@ -99,7 +99,7 @@ class Experiment:
         env.set_drivers(driver_agents)
 
         # sum of routes' costs along time (used to compute the averages)
-        routes_costs_sum = {od: [0.0 for _ in range(problem_instance.get_route_set_size(od))] for od in env.od_pairs}
+        routes_costs_sum = {od: [0.0 for _ in range(road_network.get_route_set_size(od))] for od in env.od_pairs}
 
         # sum of the average regret per OD pair (used to measure the averages through time)
         # for each OD pair, it stores a tuple [w, x, y, z], with w the average
@@ -107,32 +107,32 @@ class Experiment:
         # difference between them, and z the relative difference between them
         sum_regrets = {od: [0.0, 0.0, 0.0, 0.0] for od in env.od_pairs}
 
-        statistics = Statistics(env.problem_instance, env.drivers, self.ITERATIONS, True, True, True)
+        statistics = Statistics(env.road_network, env.drivers, self.ITERATIONS, True, True, True)
 
         best = float('inf')
 
         print("\n")
-        obs_n = env.reset()
+        obs_n, info_n = env.reset()
         for _ in range(self.ITERATIONS):
 
             # query for action from each agent's policy
             act_n = []
             for i, d in enumerate(env.drivers):
-                act_n.append(d.choose_action(obs_n[i]))
+                act_n.append(d.choose_action())
 
             # update global policy
-            policy.update_policy(self.EPSILON_DECAY)
+            policy.update(self.EPSILON_DECAY)
 
             # step environment
-            obs_n_, reward_n, terminal_n = env.step(act_n)
+            obs_n_, reward_n, terminal_n, info_n = env.step(act_n)
 
             v = env.avg_travel_time
             if v < best:
                 best = v
 
-            # update strategy (Q table)
+            # Update strategy (Q table)
             for i, d in enumerate(env.drivers):
-                d.update_strategy(obs_n_[i], reward_n[i], alpha=self.ALPHA)
+                d.update_strategy(obs_n_[i], reward_n[i], info_n[i], alpha=self.ALPHA)
 
             # Update alpha
             if self.ALPHA > self.MIN_ALPHA:

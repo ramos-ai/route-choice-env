@@ -79,12 +79,12 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
 
     # -- Agent functions
     # ----------------------------------------
-    def choose_action(self, obs: int):
+    def choose_action(self):
         self.__iteration += 1
-        self.__last_action = self.__policy.act(obs, d=self)
+        self.__last_action = self.__policy.act(d=self)
         return self.__last_action
 
-    def update_strategy(self, obs_: tuple, reward: float, alpha: float = None) -> None:
+    def update_strategy(self, obs_: tuple, reward: float, info_n, alpha: float = None) -> None:
         """
         This function does 3 things:
         - updates agent's history
@@ -98,7 +98,6 @@ class RMQLearning(DriverAgent):  # Implementation of Regret Minimisation Q-Learn
 
         :return: None
         """
-        # travel_cost = obs_[0]
         travel_cost = reward
 
         # Update agent history

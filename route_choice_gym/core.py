@@ -10,10 +10,10 @@ class Policy(object):
     def __init__(self):
         pass
 
-    def act(self, obs, d):
+    def act(self, d):
         raise NotImplementedError
 
-    def update_policy(self, **kwargs):
+    def update(self, **kwargs):
         raise NotImplementedError
 
 
@@ -57,5 +57,5 @@ class DriverAgent(object):
     def get_strategy(self):
         raise NotImplementedError
 
-    def choose_action(self, obs) -> int:
+    def choose_action(self) -> int:
         raise NotImplementedError
