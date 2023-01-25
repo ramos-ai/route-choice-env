@@ -4,18 +4,24 @@ from gym.spaces import Dict, Discrete, Space
 from decimal import Decimal
 from typing import List
 
-from route_choice_gym.core import DriverAgent
-from route_choice_gym.problem import Network
+from route_choice_env.core import DriverAgent
+from route_choice_env.problem import Network
 
 
 class RouteChoice(gym.Env):
     """
     Definitions
         obs:
-            is the free flow travel-time of route chosen by the agent
+            is None due to the problem being a stateless MDP
 
         reward:
             is the travel cost experienced by the agent
+
+        info:
+            dictionary containing info about the route taken by the agent:
+            {
+                free_flow_travel_time
+            }
 
     Structures
         act_n:
@@ -30,6 +36,9 @@ class RouteChoice(gym.Env):
             an array from the size of n_agents, each index
             corresponds to the reward of each agent.
 
+        info_n:
+            an array from the size of n_agents, each index
+            corresponds to the info each agent has access.
     """
 
     def __init__(
@@ -102,10 +111,10 @@ class RouteChoice(gym.Env):
         terminal_n = []
         info_n = []
 
-        # Evaluate solution based on routes taken and flow of drivers
         self.__solution = self.__road_network.get_empty_solution()
         self.__solution_w_preferences = self.__road_network.get_empty_solution()
 
+        # Evaluate solution based on routes taken and flow of drivers
         for i, d in enumerate(self.drivers):
             od_order = self.__road_network.get_OD_order(d.get_od_pair())
             self.__solution[od_order][action_n[i]] += d.get_flow()
@@ -124,7 +133,6 @@ class RouteChoice(gym.Env):
 
         self.__iteration += 1
 
-        # Assign
         for d in self.drivers:
             obs_n.append(None)
             reward_n.append(self.__get_reward(d))
@@ -174,12 +182,12 @@ class RouteChoice(gym.Env):
 
     def __get_obs(self, d):
         """
-        Observation is the free flow travel-time of the route taken by the agent
+        Observation of the agent is None due to the problem being a stateless MDP.
 
         :param d: Driver instance
         :return: obs
         """
-        return
+        return None
 
     def __get_reward(self, d):
         """

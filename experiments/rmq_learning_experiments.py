@@ -4,12 +4,12 @@ import json
 import timeit
 from concurrent.futures import ProcessPoolExecutor
 
-from route_choice_gym.route_choice import RouteChoice
-from route_choice_gym.problem import Network
-from route_choice_gym.statistics import Statistics
+from route_choice_env.route_choice import RouteChoice
+from route_choice_env.problem import Network
+from route_choice_env.statistics import Statistics
 
-from route_choice_gym.agents.rmq_learning import RMQLearning
-from route_choice_gym.policy import EpsilonGreedy
+from route_choice_env.agents.rmq_learning import RMQLearning
+from route_choice_env.policy import EpsilonGreedy
 
 
 N_EXPERIMENTS = 0

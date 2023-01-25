@@ -1,7 +1,7 @@
 from typing import List
 
-from route_choice_gym.core import DriverAgent
-from route_choice_gym.problem import Network
+from route_choice_env.core import DriverAgent
+from route_choice_env.problem import Network
 
 
 class Statistics(object):

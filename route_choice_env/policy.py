@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-from route_choice_gym.core import DriverAgent, Policy
+from route_choice_env.core import DriverAgent, Policy
 
 
 class Random(Policy):

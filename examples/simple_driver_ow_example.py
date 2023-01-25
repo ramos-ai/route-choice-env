@@ -1,9 +1,9 @@
 
-from route_choice_gym.route_choice import RouteChoice
-from route_choice_gym.problem import Network
+from route_choice_env.route_choice import RouteChoice
+from route_choice_env.problem import Network
 
-from route_choice_gym.agents.simple_driver import SimpleDriver
-from route_choice_gym.policy import Random
+from route_choice_env.agents.simple_driver import SimpleDriver
+from route_choice_env.policy import Random
 
 
 def create_env():
