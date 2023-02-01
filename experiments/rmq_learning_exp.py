@@ -4,7 +4,7 @@ from route_choice_env.route_choice import RouteChoice
 from route_choice_env.problem import Network
 from route_choice_env.statistics import Statistics
 
-from route_choice_env.agents.rmq_learning import RMQLearning
+from route_choice_env.agents.rmq_learning import DriverRMQLearning
 from route_choice_env.policy import EpsilonGreedy
 
 from experiments.experiment import Experiment
@@ -49,7 +49,7 @@ class RMQLearningExperiment(Experiment):
             actions = list(range(env.action_space[od].n))
             free_flow_travel_times = env.get_free_flow_travel_times(od)
             for _ in range(n):
-                driver_agents.append(RMQLearning(od, actions, initial_costs=free_flow_travel_times, policy=policy))
+                driver_agents.append(DriverRMQLearning(od, actions, initial_costs=free_flow_travel_times, policy=policy))
 
         # assign drivers to environment
         env.set_drivers(driver_agents)
