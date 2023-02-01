@@ -2,10 +2,15 @@ import gym
 from gym.spaces import Dict, Discrete, Space
 
 from decimal import Decimal
-from typing import List
+from typing import List, Optional, Type
 
-from route_choice_env.core import DriverAgent
+from route_choice_env.core import DriverAgent, EnvDriverAgent, Policy
 from route_choice_env.problem import Network
+
+from pettingzoo import ParallelEnv
+from pettingzoo.utils import agent_selector, wrappers
+from pettingzoo.utils.agent_selector import agent_selector
+from pettingzoo.utils.conversions import parallel_wrapper_fn, AgentID
 
 
 class RouteChoice(gym.Env):

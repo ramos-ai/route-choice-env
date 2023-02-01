@@ -4,7 +4,7 @@ from route_choice_env.route_choice import RouteChoice
 from route_choice_env.problem import Network
 from route_choice_env.statistics import Statistics
 
-from route_choice_env.agents.rmq_learning import RMQLearning
+from route_choice_env.agents.rmq_learning import DriverRMQLearning
 from route_choice_env.policy import EpsilonGreedy
 
 from experiments.experiment import Experiment
