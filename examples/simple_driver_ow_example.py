@@ -14,7 +14,7 @@ def create_env():
 def main():
     # initiate environment
     env = create_env()
-    n_agents_per_od = env.n_of_agents_per_od
+    n_agents_per_od = env.n_agents_per_od
 
     print(f"Number of agents: {n_agents_per_od}")
     print(f"Action space: {env.action_space}")

@@ -43,41 +43,44 @@ class TQLearningExperiment(Experiment):
 
         # initiate environment
         env = RouteChoice(road_network, tolling=True)
-        n_agents_per_od = env.n_of_agents_per_od
 
-        # create agents
-        driver_agents = []
+        # instantiate global policy
         policy = EpsilonGreedy(self.EPSILON, self.MIN_EPSILON)
-        for od, n in n_agents_per_od.items():
 
+        # create driver agents
+        driver_agents = []
+        for od, n in env.n_agents_per_od.items():
             actions = list(range(env.action_space[od].n))
-            for _ in range(n):
-                driver_agents.append(TQLearning(od, actions, policy=policy))
+
+            driver_agents += [
+                TQLearning(
+                    od_pair=od,
+                    actions=actions,
+                    policy=policy
+                )
+                for _ in range(n)
+            ]
 
         # assign drivers to environment
         env.set_drivers(driver_agents)
 
-        # sum of routes' costs along time (used to compute the averages)
-        routes_costs_sum = {od: [0.0 for _ in range(road_network.get_route_set_size(od))] for od in env.od_pairs}
-
         # sum of the average regret per OD pair (used to measure the averages through time)
-        # for each OD pair, it stores a tuple [w, x, y, z], with w the average
-        # real regret, x the average estimated regret, y the average absolute
-        # difference between them, and z the relative difference between them
+        # for each OD pair, it stores a tuple [w, x, y, z]
+        # - w the average real regret
+        # - x the average estimated regret
+        # - y the average absolute difference between them
+        # - z the relative difference between them
         sum_regrets = {od: [0.0, 0.0, 0.0, 0.0] for od in env.od_pairs}
 
         statistics = Statistics(env.road_network, env.drivers, self.ITERATIONS, True, True, True)
+        print("\n")
 
         best = float('inf')
-
-        print("\n")
         obs_n, info_n = env.reset()
         for _ in range(self.ITERATIONS):
 
             # query for action from each agent's policy
-            act_n = []
-            for i, d in enumerate(env.drivers):
-                act_n.append(d.choose_action())
+            act_n = [d.choose_action() for d in env.drivers]
 
             # update global policy
             policy.update(self.EPSILON_DECAY)
@@ -85,15 +88,15 @@ class TQLearningExperiment(Experiment):
             # step environment
             obs_n_, reward_n, terminal_n, info_n = env.step(act_n)
 
-            v = env.avg_travel_time
-            if v < best:
-                best = v
+            # test for best avg travel time
+            if env.avg_travel_time < best:
+                best = env.avg_travel_time
 
-            # Update strategy (Q table)
+            # update strategy (Q table)
             for i, d in enumerate(env.drivers):
                 d.update_strategy(obs_n_[i], reward_n[i], info_n[i], alpha=self.ALPHA)
 
-            # Update alpha
+            # update global learning rate (alpha)
             if self.ALPHA > self.MIN_ALPHA:
                 self.ALPHA = self.ALPHA * self.ALPHA_DECAY
             else:
@@ -103,18 +106,22 @@ class TQLearningExperiment(Experiment):
             # -------------------------
             for i, d in enumerate(env.drivers):
                 try:
-                    d.update_real_regret(env.get_routes_costs_min(d.get_od_pair()))
+                    d.update_real_regret(env.routes_costs_min[d.get_od_pair()])
                 except AttributeError:  # validation in case driver does not calculate real regret
                     pass
 
-            gen_real, gen_estimated, gen_diff, gen_relative_diff, sum_regrets = statistics.print_statistics_episode(_, v, sum_regrets)
+            gen_real, gen_estimated, gen_diff, gen_relative_diff, sum_regrets = statistics.print_statistics_episode(
+                _,
+                env.avg_travel_time,
+                sum_regrets
+            )
 
         solution = env.solution
 
-        env.close()
+        statistics.print_statistics(solution, env.avg_travel_time, best, sum_regrets, env.routes_costs_sum)
 
-        statistics.print_statistics(solution, v, best, sum_regrets, routes_costs_sum)
+        env.close()
 
         sys.stdout = sys.__stdout__
 
-        return [v, gen_real, gen_estimated, gen_diff, gen_relative_diff]
+        return [env.avg_travel_time, gen_real, gen_estimated, gen_diff, gen_relative_diff]

@@ -30,10 +30,7 @@ def run_experiment(Experiment, workers):
                     experiments.append(Experiment(_id, _exp['episodes'], net, k, decay, _exp['rep']))
                     _id += 1
 
-    global N_EXPERIMENTS
-    N_EXPERIMENTS = len(experiments)
-
-    print(f'Running {N_EXPERIMENTS} experiments...')
+    print(f'Running {len(experiments)} experiments...')
 
     for exp in experiments:
         if workers > 1:

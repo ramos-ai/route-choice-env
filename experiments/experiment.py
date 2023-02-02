@@ -1,4 +1,5 @@
 import os
+import contextlib
 from concurrent.futures import ProcessPoolExecutor
 
 
@@ -47,8 +48,12 @@ class Experiment(object):
         return f'{self.LOGPATH}/results_v{self.LOG_V}_summary.txt'
 
     def run(self):
+        results = {}
         for r in range(1, self.REP + 1):
-            self.run_experiment(r)
+            results[r] = self.run_experiment(r)
+
+        with contextlib.suppress(Exception):
+            self.__log_summary(results)
 
     def run_multiprocess(self, workers):
         futures = {}
@@ -60,6 +65,16 @@ class Experiment(object):
         for rep, future in futures.items():
             results[rep] = future.result()
 
+        with contextlib.suppress(Exception):
+            self.__log_summary(results)
+
+    def run_experiment(self, r_id: int) -> tuple:
+        """
+        Implement this method returning a tuple of results if you want to log summary of the experiment.
+        """
+        raise NotImplementedError
+
+    def __log_summary(self, results: dict[int, tuple]):
         with open(self.results_summary_filename, 'a+') as log:
             log.write(f'Results\t{self.ALG}\t{self.NET}\n')
             log.write('rep\tavg-tt\treal\test\tabsdiff\treldiff\n')  # \tproximityUE\n')
@@ -71,9 +86,6 @@ class Experiment(object):
                 # 3:    absolute diff between the est and real regrets
                 # 4:    relative diff between the est and real regrets
                 log.write(f'{rep}\t{result[0]}\t{result[1]}\t{result[2]}\t{result[3]}\t{result[4]}\n')
-
-    def run_experiment(self, r_id: int):
-        raise NotImplementedError
 
     def __create_log_path(self):
         logpath = f'{os.path.dirname(os.path.abspath(__file__))}'
