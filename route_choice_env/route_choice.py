@@ -2,9 +2,9 @@ import gym
 from gym.spaces import Dict, Discrete, Space
 
 from decimal import Decimal
-from typing import List, Optional, Type
+from typing import List, Optional
 
-from route_choice_env.core import DriverAgent, EnvDriverAgent, Policy
+from route_choice_env.core import DriverAgent, EnvDriverAgent
 from route_choice_env.problem import Network
 
 from pettingzoo import ParallelEnv
@@ -70,7 +70,7 @@ class RouteChoice(gym.Env):
         self.__avg_cost = 0.0
         self.__normalised_avg_cost = 0.0
 
-        # sum of routes' costs along time (used to compute the averages)
+        # sum of routes' costs through time (used to compute the averages)
         self.routes_costs_sum = {od: [0.0 for _ in range(self.__road_network.get_route_set_size(od))] for od in self.od_pairs}
         self.routes_costs_min = {od: 0.0 for od in self.od_pairs}
 
@@ -168,7 +168,6 @@ class RouteChoice(gym.Env):
             info_n.append(self.__get_info(d))
 
         self.__iteration += 1
-
         return obs_n, reward_n, terminal_n, info_n
 
     def reset(self, *, seed=None, options=None):
@@ -284,6 +283,10 @@ class RouteChoicePZ(ParallelEnv):
         self.__avg_travel_time = 0
         self.__normalised_avg_travel_time = 0
 
+        # sum of routes' costs through time (used to compute the averages)
+        self.routes_costs_sum = {od: [0.0 for _ in range(self.__road_network.get_route_set_size(od))] for od in self.od_pairs}
+        self.routes_costs_min = {od: 0.0 for od in self.od_pairs}
+
         self.__flow_distribution = self.__road_network.get_empty_solution()
         self.__flow_distribution_w_preferences = self.__road_network.get_empty_solution()
 
@@ -307,6 +310,15 @@ class RouteChoicePZ(ParallelEnv):
         routes: list = self.__road_network.get_routes(od)
         free_flow_travel_times = [r.get_free_flow_travel_time(self.__normalize_costs) for r in routes]
         return free_flow_travel_times
+
+    def __update_routes_costs_stats(self):
+        for od in self.od_pairs:
+            for r in range(int(self.__road_network.get_route_set_size(od))):
+                cc = self.__road_network.get_route(od, r).get_cost(True)
+                # if self.__tolling:
+                #     cc = 2 * cc - self.__road_network.get_route(od, r).get_free_flow_travel_time(self.__normalize_costs)
+                self.routes_costs_sum[od][r] += cc
+            self.routes_costs_min[od] = min(self.routes_costs_sum[od]) / (self.__iteration + 1)
 
     # -- Environment
     # -----------------
@@ -337,6 +349,9 @@ class RouteChoicePZ(ParallelEnv):
 
         self.__avg_travel_time, self.__normalised_avg_travel_time = self.__road_network.evaluate_assignment(self.__flow_distribution, self.__flow_distribution_w_preferences)
 
+        # Update the sum of routes' costs (used to compute the averages)
+        self.__update_routes_costs_stats()
+
         for d_id in actions.keys():
             obs_n[d_id] = None
             reward_n[d_id] = self.__get_reward(d_id)
@@ -366,7 +381,7 @@ class RouteChoicePZ(ParallelEnv):
         raise NotImplementedError
 
     def close(self):
-        raise NotImplementedError
+        del self
 
     def state(self):
         """

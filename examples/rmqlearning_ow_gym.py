@@ -1,22 +1,12 @@
+import timeit
 
-from route_choice_env.problem import Network
 from route_choice_env.route_choice import RouteChoice
-from route_choice_env.statistics import Statistics
+from route_choice_env.problem import Network
 
-from route_choice_env.core import DriverAgent, Policy
-
-from route_choice_env.agents.rmq_learning import RMQLearning
+from route_choice_env.agents.rmq_learning import RMQLearningDriver
 from route_choice_env.policy import EpsilonGreedy
 
-
-# experiment variables
-EPSILON = 1.0
-MIN_EPSILON = 0.0
-ALPHA = 1.0
-MIN_ALPHA = 0.0
-
-ITERATIONS = 1000
-DECAY = 0.99
+from route_choice_env.core import DriverAgent, Policy
 
 
 def get_env() -> RouteChoice:
@@ -25,7 +15,7 @@ def get_env() -> RouteChoice:
 
 
 def get_policy() -> Policy:
-    return EpsilonGreedy(EPSILON, MIN_EPSILON)
+    return EpsilonGreedy(epsilon=1.0, min_epsilon=0.0)
 
 
 def get_drivers(env: RouteChoice, policy: Policy) -> list[DriverAgent]:
@@ -35,7 +25,7 @@ def get_drivers(env: RouteChoice, policy: Policy) -> list[DriverAgent]:
         free_flow_travel_times = env.get_free_flow_travel_times(od)
 
         driver_agents += [
-            RMQLearning(
+            RMQLearningDriver(
                 od_pair=od,
                 actions=actions,
                 initial_costs=free_flow_travel_times,
@@ -46,8 +36,14 @@ def get_drivers(env: RouteChoice, policy: Policy) -> list[DriverAgent]:
     return driver_agents
 
 
-def main():
-    # instantiate env
+def main(
+        ITERATIONS=1000,
+        DECAY=0.995,
+        ALPHA=1.0,
+        MIN_ALPHA=0.0
+):
+
+    # initiate environment
     env = get_env()
 
     # instantiate global policy
@@ -56,24 +52,8 @@ def main():
     # create driver agents
     driver_agents = get_drivers(env, policy)
 
-    return
-
-    # set drivers to the environment
+    # assign drivers to environment
     env.set_drivers(driver_agents)
-
-    # sum of routes' costs through time (used to compute the averages)
-    routes_costs_sum = {od: [0.0 for _ in range(env.get_route_set_size(od))] for od in env.od_pairs}
-
-    # sum of the average regret per OD pair (used to measure the averages through time)
-    # for each OD pair, it stores a tuple [w, x, y, z]
-    # - w the average real regret
-    # - x the average estimated regret
-    # - y the average absolute difference between them
-    # - z the relative difference between them
-    sum_regrets = {od: [0.0, 0.0, 0.0, 0.0] for od in env.od_pairs}
-
-    statistics = Statistics(env.road_network, env.drivers, ITERATIONS, True, True, True)
-    print("\n")
 
     best = float('inf')
     obs_n, info_n = env.reset()
@@ -82,7 +62,7 @@ def main():
         # query for action from each agent's policy
         act_n = [d.choose_action() for d in env.drivers]
 
-        # update global policy (epsilon)
+        # update global policy
         policy.update(DECAY)
 
         # step environment
@@ -92,7 +72,7 @@ def main():
         if env.avg_travel_time < best:
             best = env.avg_travel_time
 
-        # update strategy (q-table)
+        # update strategy (Q table)
         for i, d in enumerate(env.drivers):
             d.update_strategy(obs_n_[i], reward_n[i], info_n[i], alpha=ALPHA)
 
@@ -102,26 +82,15 @@ def main():
         else:
             ALPHA = MIN_ALPHA
 
-        # -- episode statistics
-        # -------------------------
-        for i, d in enumerate(env.drivers):
-            try:
-                d.update_real_regret(env.routes_costs_min(d.get_od_pair()))
-            except AttributeError:  # validation in case driver does not calculate real regret
-                pass
-
-        gen_real, gen_estimated, gen_diff, gen_relative_diff, sum_regrets = statistics.print_statistics_episode(
-            _,
-            env.avg_travel_time,
-            sum_regrets
-        )
-
-    road_flow_distribution = env.solution
-
-    statistics.print_statistics(road_flow_distribution, env.avg_travel_time, best, sum_regrets, routes_costs_sum)
+    print(f"Last road_network_flow_distribution: {env.solution}")
+    print(f"Last avg_travel_time: {env.avg_travel_time}")
+    print(f"Best avg_travel_time: {best}")
 
     env.close()
 
 
 if __name__ == "__main__":
+    starttime = timeit.default_timer()
+    print("The start time is :", starttime)
     main()
+    print("The time difference is :", timeit.default_timer() - starttime)

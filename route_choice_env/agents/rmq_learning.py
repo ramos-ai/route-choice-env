@@ -1,7 +1,7 @@
 from route_choice_env.core import DriverAgent, Policy
 
 
-class DriverRMQLearning(DriverAgent):  # Implementation of Driver Agent as a RMQ-Learning
+class RMQLearningDriver(DriverAgent):  # Implementation of Driver Agent as a RMQ-Learning
     """
         This is the implementation of the RMQ-learning algorithm as a DriverAgent.
 
@@ -10,7 +10,7 @@ class DriverRMQLearning(DriverAgent):  # Implementation of Driver Agent as a RMQ
 
     def __init__(self, od_pair, actions, flow=1.0, preference_money_over_time=0.5, initial_costs=None,
                  extrapolate_costs=True, policy: Policy = None):
-        super(DriverRMQLearning, self).__init__()
+        super(RMQLearningDriver, self).__init__()
 
         self.__od_pair = od_pair
         self.__actions = actions
@@ -243,17 +243,8 @@ class RMQLearning:  # Implementation of Regret Minimisation Q-Learning
 
     # -- Driver Properties
     # ----------------------------------------
-    def get_flow(self):
-        return self.__flow
-
     def get_last_action(self):
         return self.__last_action
-
-    def get_od_pair(self):
-        return self.__od_pair
-
-    def get_preference_money_over_time(self):
-        return self.__preference_money_over_time
 
     def get_strategy(self):
         return self.__strategy
@@ -264,8 +255,8 @@ class RMQLearning:  # Implementation of Regret Minimisation Q-Learning
     # -- Agent functions
     # ----------------------------------------
     def choose_action(self):
-        self.__iteration += 1
         self.__last_action = self.__policy.act(d=self)
+        self.__iteration += 1
         return self.__last_action
 
     def update_strategy(self, obs_: None, reward: float, info: dict, alpha: float = None) -> None:
