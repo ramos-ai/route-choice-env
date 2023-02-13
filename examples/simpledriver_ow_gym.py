@@ -7,8 +7,8 @@ from route_choice_env.policy import Random
 
 
 def create_env():
-    P = Network('OW')
-    return RouteChoice(P)
+    road_network = Network('OW')
+    return RouteChoice(road_network)
 
 
 def main():

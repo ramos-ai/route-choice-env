@@ -4,7 +4,7 @@ from route_choice_env.route_choice import RouteChoice
 from route_choice_env.problem import Network
 from route_choice_env.statistics import Statistics
 
-from route_choice_env.agents.tq_learning import TQLearning
+from route_choice_env.agents.tq_learning import TQLearningDriver
 from route_choice_env.policy import EpsilonGreedy
 
 from experiments.experiment import Experiment
@@ -53,7 +53,7 @@ class TQLearningExperiment(Experiment):
             actions = list(range(env.action_space[od].n))
 
             driver_agents += [
-                TQLearning(
+                TQLearningDriver(
                     od_pair=od,
                     actions=actions,
                     policy=policy
