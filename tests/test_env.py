@@ -1,17 +1,8 @@
-from route_choice_gym.route_choice import RouteChoice
+from pettingzoo.test import parallel_api_test  # noqa: E402
+
+from route_choice_env.route_choice import RouteChoice, RouteChoicePZ
 
 
-def get_env() -> RouteChoice:
-    return RouteChoice()
-
-
-def test_env_step():
-    env = get_env()
-
-    res = False
-    try:
-        env.step([])
-    except NotImplementedError:
-        res = True
-
-    assert res
+def test_env():
+    env = RouteChoicePZ()
+    parallel_api_test(env, num_cycles=1000)

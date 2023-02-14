@@ -13,7 +13,6 @@ __pycache__/
 
 # Backup
 backup
-tests
 
 # Results
 experiments/results
