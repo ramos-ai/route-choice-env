@@ -7,7 +7,9 @@ This repository contains multiagent route choice environments for Multiagent Rei
 To install route-choice-env, follow these steps:
 
 `git clone https://github.com/ramos-ai/route-choice-gym`
+
 `cd route-choice-gym`
+
 `pip install -e .`
 
 ## Implemented algorithms
