@@ -57,7 +57,7 @@ def main(
         policy.update(DECAY)
 
         # step environment
-        obs_n_, reward_n, terminal_n, info_n = env.step(act_n)
+        obs_n_, reward_n, terminal_n, truncated_n, info_n = env.step(act_n)
 
         # test for best avg travel time
         if env.avg_travel_time < best:
@@ -82,6 +82,6 @@ def main(
 
 if __name__ == "__main__":
     starttime = timeit.default_timer()
-    print("The start time is :", starttime)
+    print("Exp start time is :", starttime)
     main()
-    print("The time difference is :", timeit.default_timer() - starttime)
+    print("Exp time difference is :", timeit.default_timer() - starttime)

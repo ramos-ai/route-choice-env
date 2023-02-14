@@ -336,6 +336,7 @@ class RouteChoicePZ(ParallelEnv):
         obs_n = {}
         reward_n = {}
         terminal_n = {}
+        truncated_n = {}
         info_n = {}
 
         self.__flow_distribution = self.__road_network.get_empty_solution()
@@ -356,10 +357,11 @@ class RouteChoicePZ(ParallelEnv):
             obs_n[d_id] = None
             reward_n[d_id] = self.__get_reward(d_id)
             terminal_n[d_id] = True
+            truncated_n[d_id] = False
             info_n[d_id] = self.__get_info(d_id)
 
         self.__iteration += 1
-        return obs_n, reward_n, terminal_n, info_n
+        return obs_n, reward_n, terminal_n, truncated_n, info_n
 
     def reset(self, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None):
         self.__road_network.reset_graph()
