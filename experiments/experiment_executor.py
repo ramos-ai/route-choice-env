@@ -6,6 +6,7 @@
 import json
 import timeit
 import argparse
+from pathlib import Path
 
 from experiments.experiment import Experiment
 
@@ -18,7 +19,7 @@ class InvalidAlgorithm(Exception):
 
 
 def run_experiment(Experiment, workers):
-    with open('experiments_config.json', 'r') as file:
+    with open(str(Path(__file__).parent.absolute()) + "/experiments_config.json", 'r') as file:
         raw_experiments = json.load(file)
 
     _id = 1
