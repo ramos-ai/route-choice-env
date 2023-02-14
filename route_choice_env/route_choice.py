@@ -1,5 +1,5 @@
-import gym
-from gym.spaces import Dict, Discrete, Space
+import gymnasium as gym
+from gymnasium.spaces import Dict, Discrete, Space
 
 from decimal import Decimal
 from typing import List, Optional

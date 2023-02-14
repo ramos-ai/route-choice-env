@@ -8,5 +8,5 @@ setup(
       author='LuizAlfredoThomasini',
       author_email='luizthomasini@gmail.com',
       packages=find_packages(),
-      install_requires=['gym', 'numpy', 'pettingzoo', 'py_expression_eval', 'sympy']
+      install_requires=['gymnasium', 'numpy', 'pettingzoo', 'py_expression_eval', 'sympy']
 )
