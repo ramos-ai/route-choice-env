@@ -4,5 +4,5 @@ from route_choice_env.route_choice import RouteChoice, RouteChoicePZ
 
 
 def test_env():
-    env = RouteChoicePZ()
+    env = RouteChoicePZ('OW', 8)
     parallel_api_test(env, num_cycles=1000)
