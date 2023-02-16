@@ -277,7 +277,7 @@ class RouteChoicePZ(ParallelEnv):
         for od in self.od_pairs:
             n_agents = int(
                 Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
-            self.__drivers |= {
+            self.__drivers.update({
                 f'driver_{od}_{i}': EnvDriverAgent(
                     d_id=f'driver_{od}_{i}',
                     flow=self.__agent_vehicles_factor,
@@ -285,7 +285,7 @@ class RouteChoicePZ(ParallelEnv):
                     preference_money_over_time=0.5  # agent's preference
                 )
                 for i in range(n_agents)
-            }
+            })
 
         # -- Agents
         self.agents = list(self.__drivers.keys())
@@ -326,7 +326,7 @@ class RouteChoicePZ(ParallelEnv):
 
     # -- Environment
     # -----------------
-    def step(self, actions: dict[str, int]):
+    def step(self, actions):
         """
 
         :param actions: Dictionary mapping from driver_id to action
@@ -334,6 +334,7 @@ class RouteChoicePZ(ParallelEnv):
             obs_n: None, due to the problem being stateless
             reward_n: Travel time of the agent after taking action
             terminal_n: True, due to the problem being stateless
+            truncated_n: False, due to the problem being stateless
             info_n: Info on the action taken (free flow travel time of route).
 
         """
