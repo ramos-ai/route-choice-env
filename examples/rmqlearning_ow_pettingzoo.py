@@ -23,11 +23,11 @@ def get_learning_agents(env: RouteChoicePZ, policy: Policy) -> dict[AgentID, RMQ
         d_id: RMQLearning(
             d_id=d_id,
             actions=list(range(env.action_space(d_id).n)),
-            initial_costs=info_n[i]['free_flow_travel_times'],
+            initial_costs=info_n[d_id]['free_flow_travel_times'],
             extrapolate_costs=True,
             policy=policy
         )
-        for i, d_id in enumerate(env.agents)
+        for d_id in env.agents
     }
 
 
@@ -72,6 +72,8 @@ def main(
             ALPHA = ALPHA * DECAY
         else:
             ALPHA = MIN_ALPHA
+
+        env.reset()
 
     print(f"Last road_network_flow_distribution: {env.road_network_flow_distribution}")
     print(f"Last avg_travel_time: {env.avg_travel_time}")

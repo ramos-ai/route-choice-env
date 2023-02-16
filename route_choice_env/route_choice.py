@@ -1,6 +1,7 @@
 import gymnasium as gym
 from gymnasium.spaces import Dict, Discrete, Space
 
+import functools
 from decimal import Decimal
 from typing import List, Optional
 
@@ -257,38 +258,41 @@ class RouteChoicePZ(ParallelEnv):
         self.__road_network = Network(net_name, routes_per_od)
         self.__road_network.reset_graph()
 
-        self.__drivers = {}
-        for od in self.od_pairs:
-            n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(agent_vehicles_factor))))
-
-            self.__drivers |= {
-                f'driver_{od}_{i}': EnvDriverAgent(
-                    d_id=f'driver_{od}_{i}',
-                    flow=agent_vehicles_factor,
-                    od_pair=od,
-                    preference_money_over_time=0.5  # agent's preference
-                )
-                for i in range(n_agents)
-            }
-
-        self.agents = list(self.__drivers.keys())
-        self.possible_agents = self.agents[:]
-
-        self.observation_spaces = {a: self.observation_space(a) for a in self.agents}
-        self.action_spaces = {a: self.action_space(a) for a in self.agents}
-
         # -- Env properties
+        self.__agent_vehicles_factor = agent_vehicles_factor
         self.__normalize_costs = normalise_costs
 
         self.__avg_travel_time = 0
         self.__normalised_avg_travel_time = 0
 
         # sum of routes' costs through time (used to compute the averages)
-        self.routes_costs_sum = {od: [0.0 for _ in range(self.__road_network.get_route_set_size(od))] for od in self.od_pairs}
+        self.routes_costs_sum = {od: [0.0 for _ in range(self.__road_network.get_route_set_size(od))] for od in
+                                 self.od_pairs}
         self.routes_costs_min = {od: 0.0 for od in self.od_pairs}
 
         self.__flow_distribution = self.__road_network.get_empty_solution()
         self.__flow_distribution_w_preferences = self.__road_network.get_empty_solution()
+
+        self.__drivers = {}
+        for od in self.od_pairs:
+            n_agents = int(
+                Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
+            self.__drivers |= {
+                f'driver_{od}_{i}': EnvDriverAgent(
+                    d_id=f'driver_{od}_{i}',
+                    flow=self.__agent_vehicles_factor,
+                    od_pair=od,
+                    preference_money_over_time=0.5  # agent's preference
+                )
+                for i in range(n_agents)
+            }
+
+        # -- Agents
+        self.agents = list(self.__drivers.keys())
+        self.possible_agents = self.agents[:]
+
+        self.observation_spaces = {a: self.observation_space(a) for a in self.agents}
+        self.action_spaces = {a: self.action_space(a) for a in self.agents}
 
         self.__iteration = 0
 
@@ -344,7 +348,11 @@ class RouteChoicePZ(ParallelEnv):
 
         # Evaluate solution based on routes taken and flow of drivers
         for d_id, route_id in actions.items():
-            self.__drivers[d_id].set_current_route(route_id)
+            try:
+                self.__drivers[d_id].set_current_route(route_id)
+            except KeyError:
+                print(f'Driver {d_id} does not exist in the environment')
+                continue
             od_order = self.__road_network.get_OD_order(self.get_driver_od_pair(d_id))
             self.__flow_distribution[od_order][route_id] += self.get_driver_flow(d_id)
 
@@ -360,20 +368,27 @@ class RouteChoicePZ(ParallelEnv):
             truncated_n[d_id] = False
             info_n[d_id] = self.__get_info(d_id)
 
+        # As a single state environment, we:
+        # - empty the agents set from the environment
+        # - return 'True' for the terminal variable
+        self.agents = []
+
         self.__iteration += 1
         return obs_n, reward_n, terminal_n, truncated_n, info_n
 
     def reset(self, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None):
+        self.agents = list(self.__drivers.keys())
+
         self.__road_network.reset_graph()
 
         self.__flow_distribution = self.__road_network.get_empty_solution()
         self.__flow_distribution_w_preferences = self.__road_network.get_empty_solution()
 
-        obs_n = [self.observation_space(d_id) for d_id in self.agents]
+        obs_n = {d_id: self.observation_space(d_id) for d_id in self.agents}
         if not return_info:
             return obs_n
 
-        info_n = [self.__get_info(d_id) for d_id in self.agents]
+        info_n = {d_id: self.__get_info(d_id) for d_id in self.agents}
         return obs_n, info_n
 
     def seed(self, seed=None):
@@ -398,6 +413,7 @@ class RouteChoicePZ(ParallelEnv):
         """
         return None
 
+    @functools.lru_cache(maxsize=None)
     def action_space(self, d_id: AgentID) -> Discrete:
         """
         :param d_id: Agent ID
