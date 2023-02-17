@@ -14,7 +14,7 @@ class Experiment(object):
     ALG: str
     ITERATIONS: int
     NET: str
-    K: float
+    K: int
     REP: int
     DECAY: float
     ALPHA: float

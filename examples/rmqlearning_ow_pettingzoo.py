@@ -73,9 +73,10 @@ def main(
         else:
             ALPHA = MIN_ALPHA
 
+        solution = env.road_network_flow_distribution
         env.reset()
 
-    print(f"Last road_network_flow_distribution: {env.road_network_flow_distribution}")
+    print(f"Last road_network_flow_distribution: {solution}")
     print(f"Last avg_travel_time: {env.avg_travel_time}")
     print(f"Best avg_travel_time: {best}")
 

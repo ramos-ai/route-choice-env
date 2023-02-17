@@ -253,9 +253,10 @@ class RouteChoicePZ(ParallelEnv):
             net_name: str,
             routes_per_od: int,
             agent_vehicles_factor=1.0,
-            normalise_costs=True
+            normalise_costs=True,
+            route_filename=None
     ):
-        self.__road_network = Network(net_name, routes_per_od)
+        self.__road_network = Network(net_name, routes_per_od, alt_route_file_name=route_filename)
         self.__road_network.reset_graph()
 
         # -- Env properties
@@ -305,6 +306,10 @@ class RouteChoicePZ(ParallelEnv):
     @property
     def od_pairs(self):
         return self.__road_network.get_OD_pairs()
+
+    @property
+    def road_network(self):
+        return self.__road_network
 
     @property
     def road_network_flow_distribution(self):
