@@ -1,22 +1,56 @@
-from typing import List
+from pathlib import Path
+from typing import Union
 
-from route_choice_env.core import DriverAgent
-from route_choice_env.problem import Network
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from route_choice_env.route_choice import RouteChoicePZ
+
+from route_choice_env.agents.rmq_learning import RMQLearning
+from route_choice_env.agents.tq_learning import TQLearning
 
 
 class Statistics(object):
+    """
+        Class for calculating statistics for experiments, both on every episode or after the experiment is completed.
 
-    def __init__(self, problem_instance: Network, drivers: List[DriverAgent], iterations, stat_regret_diff,
-                 stat_all, print_od_pairs_every_episode: bool):
+        It supports the following metrics:
+        - Average travel time (avg_tt)
+        - Real regret ()
+    """
 
-        self.__problem_instance = problem_instance  # problem instance
-        self.__drivers = drivers  # set of drivers
+    def __init__(self,
+                 env: RouteChoicePZ,
+                 driver_agents: dict[str, Union[RMQLearning, TQLearning]],
+                 iterations,
+                 stat_regret_diff,
+                 stat_all,
+                 print_od_pairs_every_episode: bool
+    ):
+        self.__env = env
+        self.__road_network = env.road_network
+        self.__driver_agents = driver_agents  # set of drivers
 
         # parameters of the problem instance
         self.__iterations = iterations
         self.__stat_regret_diff = stat_regret_diff
         self.__stat_all = stat_all
         self.__print_od_pairs_every_episode = print_od_pairs_every_episode
+
+        self.__cols_episode = ['i', 'avg_tt', 'real_reg', 'est_reg']
+        if self.__stat_regret_diff:
+            self.__cols_episode.extend(['abs_diff', 'rel_diff'])
+
+        if self.__print_od_pairs_every_episode:
+            for od in self.__road_network.get_OD_pairs():
+                self.__cols_episode.extend([f'{od}_avg_real_reg', f'{od}_avg_est_reg'])
+                if self.__stat_regret_diff:
+                    self.__cols_episode.extend([f'{od}_avg_abs_diff', f'{od}_avg_rel_diff'])  # regret diff
+
+        self.__df_episode_stats = pd.DataFrame(columns=self.__cols_episode)
+
+        print('\t'.join(map(str, [col for col in self.__cols_episode])))
 
     # -------------------------------------------------------------------
 
@@ -25,15 +59,15 @@ class Statistics(object):
         # print the average regrets of each OD pair along the iterations
         print('\nAverage regrets over all timesteps (real, estimated, absolute difference, relative difference) '
               'per OD pair:')
-        for od in self.__problem_instance.get_OD_pairs():
+        for od in self.__road_network.get_OD_pairs():
             print(f'\t{od}\t{sum_regrets[od][0] / self.__iterations}\t{sum_regrets[od][1] / self.__iterations}'
                   f'\t{sum_regrets[od][2] / self.__iterations}\t{sum_regrets[od][3] / self.__iterations}')
 
         # print the average cost of each route of each OD pair along iterations
         print('\nAverage cost of routes:')
-        for od in self.__problem_instance.get_OD_pairs():
+        for od in self.__road_network.get_OD_pairs():
             print(od)
-            for r in range(int(self.__problem_instance.get_route_set_size(od))):
+            for r in range(int(self.__road_network.get_route_set_size(od))):
                 routes_costs_sum[od][r] /= self.__iterations
                 print(f'\t{r}\t{routes_costs_sum[od][r]}')
 
@@ -42,37 +76,38 @@ class Statistics(object):
 
         # print the average strategy (for each OD pair)
         print('\nAverage strategy per OD pair:')
-        for od in self.__problem_instance.get_OD_pairs():
-            strategies = {r: 0.0 for r in range(len(self.__problem_instance.get_routes(od)))}
-            for d in self.__drivers:
-                if d.get_od_pair() == od:
+        for od in self.__road_network.get_OD_pairs():
+            strategies = {r: 0.0 for r in range(len(self.__road_network.get_routes(od)))}
+            for d_id, d in self.__driver_agents.items():
+                if self.__env.get_driver_od_pair(d_id) == od:
                     S = d.get_strategy()
                     for s in S:
                         strategies[s] += S[s]
             for s in strategies:
-                strategies[s] = round(strategies[s] / self.__problem_instance.get_OD_flow(od), 3)
+                strategies[s] = round(strategies[s] / self.__road_network.get_OD_flow(od), 3)
             print(f'\t{od}\t{strategies}')
 
         print('\nAverage expected cost of drivers per OD pair')
-        expected_cost_sum = {od: 0.0 for od in self.__problem_instance.get_OD_pairs()}
-        for d in self.__drivers:
+        expected_cost_sum = {od: 0.0 for od in self.__road_network.get_OD_pairs()}
+        for d_id, d in self.__driver_agents.items():
+            _od_pair = self.__env.get_driver_od_pair(d_id)
             _sum = 0.0
             for r in d.get_strategy():
-                _sum += d.get_strategy()[r] * routes_costs_sum[d.get_od_pair()][r]
-            expected_cost_sum[d.get_od_pair()] += _sum
+                _sum += d.get_strategy()[r] * routes_costs_sum[_od_pair][r]
+            expected_cost_sum[_od_pair] += _sum
         total = 0.0
-        for od in self.__problem_instance.get_OD_pairs():
+        for od in self.__road_network.get_OD_pairs():
             total += expected_cost_sum[od]
-            print(f'{od}\t{expected_cost_sum[od] / self.__problem_instance.get_OD_flow(od)}')
-        print(f'Average: {total / self.__problem_instance.get_total_flow()}')
+            print(f'{od}\t{expected_cost_sum[od] / self.__road_network.get_OD_flow(od)}')
+        print(f'Average: {total / self.__road_network.get_total_flow()}')
 
-    def print_statistics_episode(self, iteration, v, sum_regrets):
+    def print_statistics_episode(self, iteration, avg_travel_time, sum_regrets):
 
         # store the SUM of regrets over all drivers in the CURRENT timestep
         # for each od [w, x, y, z], where w and x represent the real and estimated
         # regrets, and y and z represent absolute and relative difference between
         # the estimated and real regrets
-        regrets = {od: [0.0, 0.0, 0.0, 0.0] for od in self.__problem_instance.get_OD_pairs()}
+        regrets = {od: [0.0, 0.0, 0.0, 0.0] for od in self.__road_network.get_OD_pairs()}
 
         gen_real = 0.0
         gen_estimated = 0.0
@@ -80,24 +115,22 @@ class Statistics(object):
         gen_relative_diff = 0.0
 
         # compute the drivers' regret on CURRENT iteration
-        for d in self.__drivers:
+        for d_id, d in self.__driver_agents.items():
+            _od_pair = self.__env.get_driver_od_pair(d_id)
+
             # get the regrets
             real = d.get_real_regret()
             estimated = d.get_estimated_regret()
 
             # store in the appropriate space
-            regrets[d.get_od_pair()][0] += real
-            regrets[d.get_od_pair()][1] += estimated
+            regrets[_od_pair][0] += real
+            regrets[_od_pair][1] += estimated
 
             gen_real += real
             gen_estimated += estimated
 
-        if self.__stat_regret_diff:
-            for d in self.__drivers:
-
+            if self.__stat_regret_diff:
                 # compute the regrets
-                real = d.get_real_regret()
-                estimated = d.get_estimated_regret()
                 diff = abs(estimated - real)
                 fxy = max(abs(estimated), abs(real))
                 try:
@@ -106,59 +139,67 @@ class Statistics(object):
                     relative_diff = 0.0
 
                 # store in the appropriate space
-                regrets[d.get_od_pair()][2] += diff
-                regrets[d.get_od_pair()][3] += relative_diff
+                regrets[_od_pair][2] += diff
+                regrets[_od_pair][3] += relative_diff
 
                 gen_diff += diff
                 gen_relative_diff += relative_diff
 
         # calculate the total averages
-        gen_real /= self.__problem_instance.get_total_flow()
-        gen_estimated /= self.__problem_instance.get_total_flow()
-        if self.__stat_regret_diff:
-            gen_diff /= self.__problem_instance.get_total_flow()
-            gen_relative_diff /= self.__problem_instance.get_total_flow()
+        gen_real /= self.__road_network.get_total_flow()
+        gen_estimated /= self.__road_network.get_total_flow()
 
-        str_print = f'%d\t%f\t%f\t%f' % (iteration, v, gen_real, gen_estimated)
-        if self.__stat_regret_diff:
-            str_print = '%s\t%f\t%f' % (str_print, gen_diff, gen_relative_diff)
+        # store values for episode statistics
+        episode_stats = [iteration, avg_travel_time, gen_real, gen_estimated]
 
-        # calculate the average regrets (real, estimated, absolute difference
-        # and relative difference) and then store and plot them (ALL iterations)
-        to_print = []
-        for od in self.__problem_instance.get_OD_pairs():
+        if self.__stat_regret_diff:
+            gen_diff /= self.__road_network.get_total_flow()
+            gen_relative_diff /= self.__road_network.get_total_flow()
+
+            episode_stats.extend([gen_diff, gen_relative_diff])
+
+        # calculate the average regrets (real, estimated, absolute difference and relative difference)
+        # and then store and plot them (ALL iterations)
+        episode_stats_per_od = {}
+        for iod, od in enumerate(self.__road_network.get_OD_pairs()):
 
             # calculate the averages
-            real = regrets[od][0] / self.__problem_instance.get_OD_flow(od)
-            estimated = regrets[od][1] / self.__problem_instance.get_OD_flow(od)
+            real = regrets[od][0] / self.__road_network.get_OD_flow(od)
+            estimated = regrets[od][1] / self.__road_network.get_OD_flow(od)
 
             # store (over all timestamps)
             sum_regrets[od][0] += real
             sum_regrets[od][1] += estimated
 
             # store important information from current iteration
-            to_print.append([real, estimated])
+            episode_stats_per_od[od] = [real, estimated]
 
-        if self.__stat_regret_diff:
-            for iod, od in enumerate(self.__problem_instance.get_OD_pairs()):
-
+            if self.__stat_regret_diff:
                 # compute the averages
-                diff = regrets[od][2] / self.__problem_instance.get_OD_flow(od)
-                relative_diff = regrets[od][3] / self.__problem_instance.get_OD_flow(od)
+                diff = regrets[od][2] / self.__road_network.get_OD_flow(od)
+                relative_diff = regrets[od][3] / self.__road_network.get_OD_flow(od)
 
                 # store (over all timestamps)
                 sum_regrets[od][2] += diff
                 sum_regrets[od][3] += relative_diff
 
                 # store important information from current iteration
-                to_print[iod].append(diff)
-                to_print[iod].append(relative_diff)
+                episode_stats_per_od[od].extend([diff, relative_diff])
 
         # print important information from current iteration
         if self.__stat_all:
-            str_add = ''
             if self.__print_od_pairs_every_episode:
-                str_add = '%s' % ('\t'.join(map(str, [item for sublist in to_print for item in sublist])))
-            print(f'{str_print}\t{str_add}')
+                [episode_stats.extend(stats) for od, stats in episode_stats_per_od.items()]
+
+            self.__df_episode_stats = pd.concat([
+                self.__df_episode_stats,
+                pd.DataFrame([episode_stats], columns=self.__cols_episode)
+            ])
+
+            print('\t'.join(map(str, [stats for stats in episode_stats])))
 
         return gen_real, gen_estimated, gen_diff, gen_relative_diff, sum_regrets
+
+    def save_episode_stats_csv(self, filename):
+        filepath = str(Path(__file__).parent.parent.absolute()) + f"/analytics/data/{filename}.csv"
+        self.__df_episode_stats.to_csv(filepath, sep=';')

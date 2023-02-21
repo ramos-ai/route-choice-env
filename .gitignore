@@ -15,4 +15,5 @@ __pycache__/
 backup
 
 # Results
+analytics
 experiments/results

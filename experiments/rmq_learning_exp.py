@@ -4,7 +4,7 @@ from route_choice_env.core import Policy
 from route_choice_env.route_choice import RouteChoicePZ
 from route_choice_env.statistics import Statistics
 
-from route_choice_env.agents.rmq_learning import RMQLearning, RMQLearningDriver
+from route_choice_env.agents.rmq_learning import RMQLearning
 from route_choice_env.policy import EpsilonGreedy
 
 from experiments.experiment import Experiment
@@ -107,8 +107,6 @@ class RMQLearningExperiment(Experiment):
 
             solution = env.road_network_flow_distribution
             env.reset()
-
-        # solution = env.road_network_flow_distribution
 
         statistics.print_statistics(solution, env.avg_travel_time, best, sum_regrets, env.routes_costs_sum)
 
