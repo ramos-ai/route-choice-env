@@ -51,7 +51,7 @@ def main(
     for _ in range(ITERATIONS):
 
         # query for action from each agent's policy
-        act_n = {d_id: drivers[d_id].choose_action() for d_id in drivers.keys()}
+        act_n = {d_id: drivers[d_id].choose_action() for d_id in env.agents}
 
         # update global policy (epsilon)
         policy.update(DECAY)
@@ -64,7 +64,7 @@ def main(
             best = env.avg_travel_time
 
         # Update strategy (Q table)
-        for d_id in drivers.keys():
+        for d_id in env.agents:
             drivers[d_id].update_strategy(obs_n_[d_id], reward_n[d_id], info_n[d_id], alpha=ALPHA)
 
         # update global learning rate (alpha)

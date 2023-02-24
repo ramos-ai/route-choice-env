@@ -74,7 +74,7 @@ class TQLearningExperiment(Experiment):
         for _ in range(self.ITERATIONS):
 
             # query for action from each agent's policy
-            act_n = {d_id: drivers[d_id].choose_action() for d_id in drivers.keys()}
+            act_n = {d_id: drivers[d_id].choose_action() for d_id in env.agents}
 
             # update global policy
             policy.update(self.EPSILON_DECAY)
@@ -87,7 +87,7 @@ class TQLearningExperiment(Experiment):
                 best = env.avg_travel_time
 
             # update strategy (Q table)
-            for d_id in drivers.keys():
+            for d_id in env.agents:
                 drivers[d_id].update_strategy(obs_n[d_id], reward_n[d_id], info_n[d_id], alpha=self.ALPHA)
 
             # update global learning rate (alpha)
