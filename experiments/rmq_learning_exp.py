@@ -81,7 +81,7 @@ class RMQLearningExperiment(Experiment):
                 best = env.avg_travel_time
 
             # update strategy (Q table)
-            for d_id in env.agents:
+            for d_id in drivers.keys():
                 drivers[d_id].update_strategy(obs_n_[d_id], reward_n[d_id], info_n[d_id], alpha=self.ALPHA)
 
             # update global learning rate (alpha)
@@ -111,7 +111,7 @@ class RMQLearningExperiment(Experiment):
 
         statistics.print_statistics(solution, env.avg_travel_time, best, sum_regrets, env.routes_costs_sum)
 
-        env.close()
+        # env.close()
 
         sys.stdout = sys.__stdout__
 

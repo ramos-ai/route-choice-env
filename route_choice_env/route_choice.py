@@ -412,6 +412,7 @@ class RouteChoicePZ(ParallelEnv):
         """
         return None
 
+    @functools.lru_cache(maxsize=None)
     def observation_space(self, d_id: AgentID) -> None:
         """
         :param d_id: Agent ID

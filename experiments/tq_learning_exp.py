@@ -4,7 +4,7 @@ from route_choice_env.core import Policy
 from route_choice_env.route_choice import RouteChoicePZ
 from route_choice_env.statistics import Statistics
 
-from route_choice_env.agents.tq_learning import TQLearning, TQLearningDriver
+from route_choice_env.agents.tq_learning import TQLearning
 from route_choice_env.policy import EpsilonGreedy
 
 from experiments.experiment import Experiment
@@ -52,7 +52,7 @@ class TQLearningExperiment(Experiment):
             route_filename = f"{self.NET}.TRC.routes"
 
         # initiate environment
-        env = RouteChoicePZ(self.NET, self.K, route_filename=route_filename)
+        env = RouteChoicePZ(self.NET, self.K, agent_vehicles_factor=10, route_filename=route_filename)
 
         # instantiate global policy
         policy = EpsilonGreedy(self.EPSILON, self.MIN_EPSILON)
@@ -87,7 +87,7 @@ class TQLearningExperiment(Experiment):
                 best = env.avg_travel_time
 
             # update strategy (Q table)
-            for d_id in env.agents:
+            for d_id in drivers.keys():
                 drivers[d_id].update_strategy(obs_n[d_id], reward_n[d_id], info_n[d_id], alpha=self.ALPHA)
 
             # update global learning rate (alpha)
@@ -116,7 +116,7 @@ class TQLearningExperiment(Experiment):
 
         statistics.print_statistics(solution, env.avg_travel_time, best, sum_regrets, env.routes_costs_sum)
 
-        env.close()
+        # env.close()
 
         sys.stdout = sys.__stdout__
 
