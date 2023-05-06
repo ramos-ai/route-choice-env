@@ -1,8 +1,8 @@
-from route_choice_env.core import Policy
+from route_choice_env.core import Agent, Policy
 
 
 # Simple agent class for testing the environment
-class SimpleDriver:
+class SimpleDriver(Agent):
 
     def __init__(
             self,

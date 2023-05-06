@@ -1,6 +1,6 @@
 import numpy as np
 
-from route_choice_env.core import DriverAgent, Policy
+from route_choice_env.core import Agent, Policy
 
 
 class Random(Policy):
@@ -9,7 +9,7 @@ class Random(Policy):
     def __init__(self):
         super(Random, self).__init__()
 
-    def act(self, d: DriverAgent):
+    def act(self, d: Agent):
         return int(np.random.random() * len(d.get_strategy()))  # slower than random.random, but less biased
 
     def update(self):
@@ -29,7 +29,7 @@ class EpsilonGreedy(Policy):
         self.__epsilon = epsilon
         self.__min_epsilon = min_epsilon
 
-    def act(self, d: DriverAgent):
+    def act(self, d: Agent):
 
         # Epsilon-greedy: choose the action with the highest probability with probability 1-epsilon
         # otherwise, choose any action uniformly at random

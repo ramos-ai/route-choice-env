@@ -2,9 +2,9 @@ from gymnasium.spaces import Discrete
 
 import functools
 from decimal import Decimal
-from typing import Optional
+from typing import Mapping, Optional
 
-from route_choice_env.core import DriverAgent, EnvDriverAgent
+from route_choice_env.core import Driver
 from route_choice_env.problem import Network
 
 from pettingzoo import ParallelEnv
@@ -57,11 +57,11 @@ class RouteChoicePZ(ParallelEnv):
         self.__flow_distribution = self.__road_network.get_empty_solution()
         self.__flow_distribution_w_preferences = self.__road_network.get_empty_solution()
 
-        self.__drivers = {}
+        self.__drivers: Mapping[str, Driver] = {}
         for od in self.od_pairs:
             n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
             self.__drivers.update({
-                f'driver_{od}_{i}': EnvDriverAgent(
+                f'driver_{od}_{i}': Driver(
                     d_id=f'driver_{od}_{i}',
                     flow=self.__agent_vehicles_factor,
                     od_pair=od,
@@ -137,7 +137,7 @@ class RouteChoicePZ(ParallelEnv):
         # Evaluate solution based on routes taken and flow of drivers
         for d_id, route_id in actions.items():
             try:
-                self.__drivers[d_id].set_current_route(route_id)
+                self.__drivers[d_id].current_route = route_id
             except KeyError:
                 print(f'Driver {d_id} does not exist in the environment')
                 continue

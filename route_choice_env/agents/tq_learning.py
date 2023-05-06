@@ -1,7 +1,7 @@
-from route_choice_env.core import Policy
+from route_choice_env.core import Agent, Policy
 
 
-class TQLearning:  # Implementation of Toll-based Q-Learning
+class TQLearning(Agent):  # Implementation of Toll-based Q-Learning
     """
         Implementation of the TQ-learning algorithm.
 

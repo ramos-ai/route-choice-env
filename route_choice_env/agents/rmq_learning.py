@@ -1,7 +1,7 @@
-from route_choice_env.core import Policy
+from route_choice_env.core import Agent, Policy
 
 
-class RMQLearning:  # Implementation of Regret Minimisation Q-Learning
+class RMQLearning(Agent):  # Implementation of Regret Minimisation Q-Learning
     """
         This is the implementation of the RMQ-learning algorithm.
 

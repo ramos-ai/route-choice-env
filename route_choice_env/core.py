@@ -1,5 +1,4 @@
 
-
 class Policy(object):
     """
         Interface for a generic policy.
@@ -28,49 +27,38 @@ class TollingStrategy(object):
         raise NotImplementedError
 
 
-class DriverAgent(object):
+class Agent(object):
     """
         Interface for a generic driver agent.
 
         It defines attributes and functions to implement an agent that interacts with the route choice environment.
     """
+    __driver_id: str
     __actions: list
-    __flow: float
     __last_action: int
-    __od_pair: str
-    __preference_money_over_time: float
     __strategy: dict
 
-    def get_flow(self) -> float:
-        raise NotImplementedError
-
-    def get_last_action(self) -> int:
-        raise NotImplementedError
-
-    def get_od_pair(self) -> str:
-        raise NotImplementedError
-
-    def get_preference_money_over_time(self) -> float:
+    def get_last_action(self):
         raise NotImplementedError
 
     def get_strategy(self):
         raise NotImplementedError
 
-    def choose_action(self) -> int:
+    def choose_action():
         raise NotImplementedError
 
 
-class EnvDriverAgent(object):
+class Driver:
     """
-        Class describing an agent in the environment.
+        Class describing adriver in the environment.
 
         It is instantiated in the PettingZoo env __init__ function.
     """
     __d_id: str
     __od_pair: str
-    __current_route: int
     __flow: float
     __preference_money_over_time: float
+    current_route: int
 
     def __init__(
             self,
@@ -83,14 +71,14 @@ class EnvDriverAgent(object):
         self.__d_id = d_id
         self.__od_pair = od_pair
 
-        self.__current_route = -1
-
         # Flow controlled by the agent (default is 1.0)
         self.__flow = flow
 
         # The time-money trade-off (the higher the preference of money over time is, the more the agent prefers
         # saving money or, alternatively, the less it cares about travelling fast)
         self.__preference_money_over_time = preference_money_over_time
+
+        self.current_route = -1
 
     # -- Getter
     # ------------
@@ -107,9 +95,9 @@ class EnvDriverAgent(object):
         return self.__preference_money_over_time
 
     def get_current_route(self):
-        return self.__current_route
+        return self.current_route
 
     # -- Setter
     # ------------
     def set_current_route(self, route_id: int):
-        self.__current_route = route_id
+        self.current_route = route_id
