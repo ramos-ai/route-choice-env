@@ -1,39 +1,35 @@
-from route_choice_env.core import DriverAgent, Policy
+from route_choice_env.core import Policy
 
 
 # Simple agent class for testing the environment
-class SimpleDriver(DriverAgent):
+class SimpleDriver:
 
-    def __init__(self, od_pair: str, actions: list, policy: Policy):
-        super(SimpleDriver, self).__init__()
+    def __init__(
+            self,
+            actions: list,
+            d_id: str,
+            policy: Policy
+            ):
 
-        self.__od_pair = od_pair
+        self.__driver_id = d_id
+        self.__actions = actions
         self.__last_action = 0
 
-        self.__flow = 1.0
-        self.__time_flexibility = 0.5
+        # For SimpleDriver, the strategy is same for all actions and does not update
+        self.__strategy = {a: 1.0 for a in self.__actions}
 
-        # self.__strategy = {a: 0.0 for a in actions}
-        self.__actions = actions
         self.__policy = policy
 
     # -- Driver Properties
     # ----------------------------------------
-    def get_flow(self):
-        return self.__flow
-
     def get_last_action(self):
         return self.__last_action
-
-    def get_od_pair(self):
-        return self.__od_pair
-
-    def get_preference_money_over_time(self):
-        return self.__preference_money_over_time
 
     def get_strategy(self):
         return self.__strategy
 
+    # -- Agent functions
+    # ----------------------------------------
     def choose_action(self):
         """
         :return: returns an action

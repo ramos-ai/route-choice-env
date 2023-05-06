@@ -1,23 +1,16 @@
 import numpy as np
-import random
 
 from route_choice_env.core import DriverAgent, Policy
 
 
 class Random(Policy):
-    """
-        Random policy class.
+    """ Chooses action at random. """
 
-        Chooses action at random.
-    """
-
-    def __init__(self, actions: list):
+    def __init__(self):
         super(Random, self).__init__()
 
-        self.__actions = actions
-
     def act(self, d: DriverAgent):
-        return random.choice(self.__actions)
+        return int(np.random.random() * len(d.get_strategy()))  # slower than random.random, but less biased
 
     def update(self):
         pass
