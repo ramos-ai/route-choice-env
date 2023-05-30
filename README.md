@@ -88,6 +88,16 @@ Multiprocess (faster but more expensive):
 
 `$ python3 experiments/experiment_executor.py --alg RMQLearning --workers 6`
 
+
 ## Citing
 
-Citation to appear
+```
+@InProceedings{Thomasini+2023ala,
+author = {Thomasini, Luiz A. and Alegre, Lucas N. and Ramos, Gabriel {\relax de} O. and Bazzan, Ana L. C.},
+title = {RouteChoiceEnv: a Route Choice Library for Multiagent Reinforcement Learning},
+booktitle = {Proc. of the Adaptive and Learning Agents Workshop (ALA 2023)},
+year = {2023},
+address = {London},
+month = {May},
+}
+```
