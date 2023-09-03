@@ -37,6 +37,8 @@ class RouteChoicePZ(ParallelEnv):
             net_name: str,
             routes_per_od: int,
             agent_vehicles_factor=1.0,
+            preference_money_over_time=0.5,
+            revenue_redistribution_rate=0.0,
             normalise_costs=True,
             route_filename=None
     ):
@@ -45,6 +47,7 @@ class RouteChoicePZ(ParallelEnv):
 
         # -- Env properties
         self.__agent_vehicles_factor = agent_vehicles_factor
+        self.__preference_money_over_time = preference_money_over_time
         self.__normalize_costs = normalise_costs
 
         self.__avg_travel_time = 0
@@ -63,9 +66,9 @@ class RouteChoicePZ(ParallelEnv):
             self.__drivers.update({
                 f'driver_{od}_{i}': Driver(
                     d_id=f'driver_{od}_{i}',
-                    flow=self.__agent_vehicles_factor,
                     od_pair=od,
-                    preference_money_over_time=0.5  # agent's preference
+                    flow=self.__agent_vehicles_factor,
+                    preference_money_over_time=self.__preference_money_over_time  # agent's preference
                 )
                 for i in range(n_agents)
             })
@@ -78,6 +81,14 @@ class RouteChoicePZ(ParallelEnv):
         self.action_spaces = {a: self.action_space(a) for a in self.agents}
 
         self.__iteration = 0
+
+
+        # dev
+        # ---
+        # if revenue_redistribution_rate > 0:
+        self.tolls_share_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
+        # ---
+
 
     # -- Road Network properties
     # -----------------------------
@@ -115,7 +126,6 @@ class RouteChoicePZ(ParallelEnv):
     # -----------------
     def step(self, actions):
         """
-
         :param actions: Dictionary mapping from driver_id to action
         :return:
             obs_n: None, due to the problem being stateless
@@ -143,6 +153,12 @@ class RouteChoicePZ(ParallelEnv):
                 continue
             od_order = self.__road_network.get_OD_order(self.get_driver_od_pair(d_id))
             self.__flow_distribution[od_order][route_id] += self.get_driver_flow(d_id)
+
+
+            # dev
+            # ---
+            self.tolls_share_per_od[od_order] += self.__get_toll(self.get_driver_od_pair(d_id), route_id)
+            # ---
 
         self.__avg_travel_time, self.__normalised_avg_travel_time = self.__road_network.evaluate_assignment(self.__flow_distribution, self.__flow_distribution_w_preferences)
 
@@ -224,8 +240,12 @@ class RouteChoicePZ(ParallelEnv):
         :param d_id:  Agent ID
         :return: dict
         """
+        od_pair: str = self.get_driver_od_pair(d_id)
         info = {
-            "free_flow_travel_times": self.get_free_flow_travel_times(self.get_driver_od_pair(d_id))
+            "driver_preference": self.get_driver_preference_money_over_time(d_id),
+            "free_flow_travel_times": self.get_free_flow_travel_times(od_pair),
+            "toll_dues": self.__get_toll(od_pair, self.get_driver_current_route(d_id)),
+            "side_payments": self.__get_toll_share(od_pair)
         }
         return info
 
@@ -240,6 +260,15 @@ class RouteChoicePZ(ParallelEnv):
         cost = route.get_cost(self.__normalize_costs)
         return cost
 
+    def __get_toll(self, od_pair: str, r_id: int):
+        if r_id not in self.road_network.get_routes_ids(od_pair):
+            return 0.0
+        return self.__get_travel_time(od_pair, r_id) - self.get_free_flow_travel_times(od_pair)[r_id]
+
+    def __get_toll_share(self, od_pair: str):
+        od_i: int = self.road_network.get_OD_order(od_pair)
+        return self.tolls_share_per_od[od_i]
+
     # -- Driver Properties
     # -----------------------
     def get_driver_flow(self, d_id: AgentID) -> float:
@@ -247,3 +276,9 @@ class RouteChoicePZ(ParallelEnv):
 
     def get_driver_od_pair(self, d_id: AgentID) -> str:
         return self.__drivers[d_id].get_od_pair()
+
+    def get_driver_current_route(self, d_id: AgentID) -> str:
+        return self.__drivers[d_id].get_current_route()
+
+    def get_driver_preference_money_over_time(self, d_id: AgentID) -> float:
+        return self.__drivers[d_id].get_preference_money_over_time()
