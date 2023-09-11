@@ -20,7 +20,7 @@ def get_gtq_learning_agents(env: RouteChoicePZ, policy: Policy):
             d_id=d_id,
             actions=list(range(env.action_space(d_id).n)),
             extrapolate_costs=False,
-            preference_money_over_time=env.get_driver_preference_money_over_time(d_id),
+            # preference_money_over_time=env.get_driver_preference_money_over_time(d_id),
             policy=policy
         )
         for d_id in env.agents
@@ -29,14 +29,27 @@ def get_gtq_learning_agents(env: RouteChoicePZ, policy: Policy):
 
 class GTQLearningExperiment(Experiment):
 
-    def __init__(self, _id: int, episodes: int, net: str, k: int, decay: float, rep: int):
+    def __init__(self,
+                _id: int,
+                episodes: int,
+                net: str,
+                k: int,
+                alpha_decay: float,
+                epsilon_decay: float,
+                revenue_redistribution_rate: float,
+                preference_dist_name: str,
+                rep: int
+                ):
         super(GTQLearningExperiment, self).__init__(
             _id,
             'GTQLearning',
             episodes,
             net,
             k,
-            decay,
+            alpha_decay,
+            epsilon_decay,
+            revenue_redistribution_rate,
+            preference_dist_name,
             rep
         )
 
@@ -53,7 +66,11 @@ class GTQLearningExperiment(Experiment):
             route_filename = f"{self.NET}.TRC.routes"
 
         # initiate environment
-        env = RouteChoicePZ(self.NET, self.K, agent_vehicles_factor=10, route_filename=route_filename)
+        env = RouteChoicePZ(self.NET, self.K,
+                            agent_vehicles_factor=10,
+                            revenue_redistribution_rate=self.REVENUE_REDISTRIBUTION_RATE,
+                            preference_dist_name=self.PREFERENCE_DIST_NAME,
+                            route_filename=route_filename)
 
         # instantiate global policy
         policy = EpsilonGreedy(self.EPSILON, self.MIN_EPSILON)

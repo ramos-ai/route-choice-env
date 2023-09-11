@@ -122,7 +122,7 @@ class Distribution(object):
 	# Note: the complexity of this distribution is considerably higher than the previous ones
 	def __init_truncated_normal(self, mean, deviation, min_value, max_value, num_of_samples):
 		self.__trunc_norm_iter = iter(sc_stats.truncnorm((min_value-mean)/deviation, (max_value-mean)/deviation, loc=mean, scale=deviation).rvs(num_of_samples))
-		self.__function = lambda: self.__trunc_norm_iter.next()
+		self.__function = lambda: next(self.__trunc_norm_iter)
 
 	# return a single, randomly generated sample of the distribution
 	def sample(self):

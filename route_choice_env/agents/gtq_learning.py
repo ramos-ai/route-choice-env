@@ -44,6 +44,13 @@ class GTQLearning(Agent):  # Implementation of Regret Minimisation Q-Learning
         # Current toll dues
         self.__toll_dues = 0.0
 
+        # Estimated regret
+        self.__estimated_regret = None
+        self.__estimated_action_regret = {a: 0.0 for a in actions}
+
+        # Real regret
+        self.__real_regret = 0.0
+
         # Minimum average cost (stored here to enhance performance)
         self.__min_avg_cost = 0.0
 
@@ -84,28 +91,31 @@ class GTQLearning(Agent):  # Implementation of Regret Minimisation Q-Learning
         :return: None
         """
         travel_time = reward
-        driver_preference = info['driver_preference']
+        preference_money_over_time = info['preference_money_over_time']
         route_free_flow_tt = info['free_flow_travel_times'][self.__last_action]
-        side_payment = info['side_payments'][self.__last_action]
+        marginal_cost = info['marginal_cost']
+        side_payment = info['side_payment']
 
         # Compute toll dues
-        self.compute_toll_dues(travel_time, route_free_flow_tt, driver_preference)
+        self.compute_toll_dues(travel_time, marginal_cost, preference_money_over_time)
 
         # Compute utility (cost) and update strategy (Q-table)
-        cost = self.__compute_utility(travel_time, side_payment)
+        cost = self.__compute_utility(travel_time, side_payment, preference_money_over_time)
         self.__update_strategy_q_learning(cost, alpha)
 
         # Update agent history
         self.__update_history(cost, travel_time)
 
-    def __compute_utility(self, travel_time: float, side_payment: float) -> float:
+        # Estimate regret
+        self.__estimate_regret()
+
+    def __compute_utility(self, travel_time: float, side_payment: float, preference_money_over_time: float) -> float:
         """
-        For the TQLearningDriver algorithm, we compute the utility (cost) considering travel time and toll and use it as
-        learning signal.
+        For the GTQLearningDriver algorithm, we compute the utility (cost).
 
         :return: cost (reward)
         """
-        return travel_time + self.__toll_dues - side_payment
+        return (1.0 - preference_money_over_time) * travel_time + preference_money_over_time * self.__toll_dues - side_payment
 
     # Q-learning (stateless, so the gamma parameter is not required)
     def __update_strategy_q_learning(self, utility, alpha):
@@ -155,14 +165,40 @@ class GTQLearning(Agent):  # Implementation of Regret Minimisation Q-Learning
 
     def compute_toll_dues(self,
                           travel_time: float,
-                          free_flow_travel_time: float,
+                          marginal_cost: float,
                           preference_money_over_time: float
                           ):
         # MCT with preferences
         # Note 1: this is equivalent to the original MCT if the preference parameter is 0.5 for all agents
         # Note 2: the expression is multiplied by 2 to make it fully compatible with the original MCT formulation
         #         (and to make the code retro-compatible with previous algorithms and validations)
-        toll_mct = travel_time - free_flow_travel_time  # marginal cost
-        toll_mct_w_preferences = (toll_mct + travel_time * preference_money_over_time)
-        self.__toll_dues = toll_mct_w_preferences / preference_money_over_time  # the indifferent MCT
+        # toll_mct = travel_time - free_flow_travel_time  # marginal cost
+        toll_mct_w_preferences = (marginal_cost + travel_time * preference_money_over_time)
+        self.__toll_dues = toll_mct_w_preferences / preference_money_over_time  # indifferent MCT
         return self.__toll_dues
+
+    # -- Regret functions
+    # ----------------------------------------
+    # Calculate the driver's estimated regret
+    def __estimate_regret(self):
+        self.__estimated_regret = (self.__sum_cost / self.__iteration) - self.__min_avg_cost
+
+        # Estimated regret per action
+        for a in self.__history_actions_costs:
+            if self.__extrapolate_costs is False and self.__history_actions_costs[a][1] == 0:  # to handle initial cases
+                self.__estimated_action_regret[a] = 0.0
+            else:
+                self.__estimated_action_regret[a] = self.__history_actions_costs[a][3] - self.__min_avg_cost
+
+    def get_estimated_regret(self, action: int = None):
+        if action is None:
+            return self.__estimated_regret
+        else:
+            return self.__estimated_action_regret[action]
+
+    def get_real_regret(self):
+        return self.__real_regret
+
+    # calculate the real regret given the real minimum average cost
+    def update_real_regret(self, real_min_avg: float):
+        self.__real_regret = self.get_average_cost() - real_min_avg

@@ -1,3 +1,4 @@
+import numpy as np
 from gymnasium.spaces import Discrete
 
 import functools
@@ -5,6 +6,7 @@ from decimal import Decimal
 from typing import Mapping, Optional
 
 from route_choice_env.core import Driver
+from route_choice_env.misc import Distribution
 from route_choice_env.problem import Network
 
 from pettingzoo import ParallelEnv
@@ -36,18 +38,25 @@ class RouteChoicePZ(ParallelEnv):
             self,
             net_name: str,
             routes_per_od: int,
-            agent_vehicles_factor=1.0,
-            preference_money_over_time=0.5,
-            revenue_redistribution_rate=0.0,
-            normalise_costs=True,
-            route_filename=None
+            agent_vehicles_factor: float = 1.0,
+            revenue_redistribution_rate: float = 0.0,
+            normalise_costs: bool = True,
+            preference_dist_name: str = None,
+            route_filename: str = None,
     ):
         self.__road_network = Network(net_name, routes_per_od, alt_route_file_name=route_filename)
         self.__road_network.reset_graph()
 
+        self.__revenue_redistribution_rate = revenue_redistribution_rate
+
         # -- Env properties
         self.__agent_vehicles_factor = agent_vehicles_factor
-        self.__preference_money_over_time = preference_money_over_time
+        print(f'>>> EVALUATING DIST NAME: {preference_dist_name}' )
+        if preference_dist_name is None:
+            self.__preference_money_over_time = Distribution(Distribution.DIST_FIXED)
+        else:
+            print('>>> PRINTING TOTAL FLOW: ', self.__road_network.get_total_flow() )
+            self.__preference_money_over_time = Distribution(dist=Distribution.get_dist_id(preference_dist_name), num_of_samples=self.__road_network.get_total_flow())
         self.__normalize_costs = normalise_costs
 
         self.__avg_travel_time = 0
@@ -60,18 +69,8 @@ class RouteChoicePZ(ParallelEnv):
         self.__flow_distribution = self.__road_network.get_empty_solution()
         self.__flow_distribution_w_preferences = self.__road_network.get_empty_solution()
 
-        self.__drivers: Mapping[str, Driver] = {}
-        for od in self.od_pairs:
-            n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
-            self.__drivers.update({
-                f'driver_{od}_{i}': Driver(
-                    d_id=f'driver_{od}_{i}',
-                    od_pair=od,
-                    flow=self.__agent_vehicles_factor,
-                    preference_money_over_time=self.__preference_money_over_time  # agent's preference
-                )
-                for i in range(n_agents)
-            })
+        self.__drivers: Mapping[AgentID, Driver] = {}
+        self.__create_drivers()
 
         # -- Agents
         self.agents = list(self.__drivers.keys())
@@ -87,8 +86,8 @@ class RouteChoicePZ(ParallelEnv):
         # ---
         # if revenue_redistribution_rate > 0:
         self.tolls_share_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
+        self.side_payment_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
         # ---
-
 
     # -- Road Network properties
     # -----------------------------
@@ -121,6 +120,20 @@ class RouteChoicePZ(ParallelEnv):
                 #     cc = 2 * cc - self.__road_network.get_route(od, r).get_free_flow_travel_time(self.__normalize_costs)
                 self.routes_costs_sum[od][r] += cc
             self.routes_costs_min[od] = min(self.routes_costs_sum[od]) / (self.__iteration + 1)
+
+    def __create_drivers(self):
+        for od in self.od_pairs:
+            n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
+            self.__drivers.update({
+                f'driver_{od}_{i}': Driver(
+                    d_id=f'driver_{od}_{i}',
+                    od_pair=od,
+                    flow=self.__agent_vehicles_factor,
+                    preference_money_over_time=self.__preference_money_over_time.sample()  # agent's preference
+                )
+                for i in range(n_agents)
+            })
+
 
     # -- Environment
     # -----------------
@@ -156,14 +169,33 @@ class RouteChoicePZ(ParallelEnv):
 
 
             # dev
-            # ---
-            self.tolls_share_per_od[od_order] += self.__get_toll(self.get_driver_od_pair(d_id), route_id)
+            # --- we are assigning the flow to the network (evaluate assignment) only AFTER we calculated the tolls
+            # self.tolls_share_per_od[od_order] += self.__get_marginal_cost(self.get_driver_od_pair(d_id), route_id)
             # ---
 
         self.__avg_travel_time, self.__normalised_avg_travel_time = self.__road_network.evaluate_assignment(self.__flow_distribution, self.__flow_distribution_w_preferences)
 
         # Update the sum of routes' costs (used to compute the averages)
         self.__update_routes_costs_stats()
+
+        # dev
+        # ---
+        for d_id, r_id in actions.items():
+            od = self.get_driver_od_pair(d_id)
+            od_order = self.__road_network.get_OD_order(od)
+            preference = self.get_driver_preference_money_over_time(d_id)
+
+            toll = (self.__get_marginal_cost(od, r_id) + self.__get_reward(d_id) * preference) / preference
+            self.tolls_share_per_od[od_order] += toll
+
+            # ---
+        if self.__revenue_redistribution_rate > 0.0:
+            for od in self.road_network.get_OD_pairs():
+                od_i: int = self.road_network.get_OD_order(od)
+                temp = self.tolls_share_per_od[od_i] * self.__revenue_redistribution_rate
+                self.side_payment_per_od[od_i] = temp / self.road_network.get_OD_flow(od)
+
+        # ---
 
         for d_id in actions.keys():
             obs_n[d_id] = None
@@ -230,7 +262,7 @@ class RouteChoicePZ(ParallelEnv):
     def __get_reward(self, d_id: AgentID) -> float:
         od_pair = self.__drivers[d_id].get_od_pair()
         route_id = self.__drivers[d_id].get_current_route()
-        return self.__get_travel_time(od_pair, route_id)
+        return self.__get_route_travel_time(od_pair, route_id)
 
     def __get_info(self, d_id: AgentID) -> dict:
         """
@@ -242,16 +274,16 @@ class RouteChoicePZ(ParallelEnv):
         """
         od_pair: str = self.get_driver_od_pair(d_id)
         info = {
-            "driver_preference": self.get_driver_preference_money_over_time(d_id),
+            "preference_money_over_time": self.get_driver_preference_money_over_time(d_id),
             "free_flow_travel_times": self.get_free_flow_travel_times(od_pair),
-            "toll_dues": self.__get_toll(od_pair, self.get_driver_current_route(d_id)),
-            "side_payments": self.__get_toll_share(od_pair)
+            "marginal_cost": self.__get_marginal_cost(od_pair, self.get_driver_current_route(d_id)),
+            "side_payment": self.__get_side_payment_for_od(od_pair)
         }
         return info
 
     # -- Environment Properties
     # ----------------------------
-    def __get_travel_time(self, od_pair: str, r_id: int):
+    def __get_route_travel_time(self, od_pair: str, r_id: int):
         """
         :param r_id:  Route ID
         :return: driver's travel time
@@ -260,14 +292,18 @@ class RouteChoicePZ(ParallelEnv):
         cost = route.get_cost(self.__normalize_costs)
         return cost
 
-    def __get_toll(self, od_pair: str, r_id: int):
+    def __get_marginal_cost(self, od_pair: str, r_id: int):
         if r_id not in self.road_network.get_routes_ids(od_pair):
             return 0.0
-        return self.__get_travel_time(od_pair, r_id) - self.get_free_flow_travel_times(od_pair)[r_id]
+        return self.__get_route_travel_time(od_pair, r_id) - self.get_free_flow_travel_times(od_pair)[r_id]
 
-    def __get_toll_share(self, od_pair: str):
+    def __get_toll_share_for_od(self, od_pair: str):
         od_i: int = self.road_network.get_OD_order(od_pair)
         return self.tolls_share_per_od[od_i]
+
+    def __get_side_payment_for_od(self, od_pair):
+        od_i: int = self.road_network.get_OD_order(od_pair)
+        return self.side_payment_per_od[od_i]
 
     # -- Driver Properties
     # -----------------------

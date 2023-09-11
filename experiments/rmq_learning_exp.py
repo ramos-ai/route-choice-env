@@ -26,14 +26,15 @@ def get_rmq_learning_agents(env: RouteChoicePZ, policy: Policy):
 
 class RMQLearningExperiment(Experiment):
 
-    def __init__(self, _id: int, episodes: int, net: str, k: int, decay: float, rep: int):
+    def __init__(self, _id: int, episodes: int, net: str, k: int, alpha_decay: float, epsilon_decay: float, rep: int):
         super(RMQLearningExperiment, self).__init__(
             _id,
             'RMQLearning',
             episodes,
             net,
             k,
-            decay,
+            alpha_decay,
+            epsilon_decay,
             rep
         )
 
@@ -45,8 +46,12 @@ class RMQLearningExperiment(Experiment):
         print(f' algorithm={self.ALG}, network={self.NET}, replication={r_id}, K={self.K}, decay={self.DECAY}')
         print('========================================================================\n')
 
+        route_filename = None
+        if self.NET in ['BBraess_1_2100_10_c1_2100', 'BBraess_3_2100_10_c1_900', 'BBraess_5_2100_10_c1_900', 'BBraess_7_2100_10_c1_900']:
+            route_filename = f"{self.NET}.TRC.routes"
+
         # initiate environment
-        env = RouteChoicePZ(self.NET, self.K)
+        env = RouteChoicePZ(self.NET, self.K, route_filename=route_filename)
 
         # instantiate global policy
         policy = EpsilonGreedy(self.EPSILON, self.MIN_EPSILON)
@@ -94,8 +99,7 @@ class RMQLearningExperiment(Experiment):
             # -------------------------
             for d_id, d in drivers.items():
                 try:
-                    od_pair = env.get_driver_od_pair(d_id)
-                    d.update_real_regret(env.routes_costs_min[od_pair])
+                    d.update_real_regret(env.routes_costs_min[env.get_driver_od_pair(d_id)])
                 except AttributeError:  # validation in case driver does not calculate real regret
                     pass
 
