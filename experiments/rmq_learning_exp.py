@@ -35,6 +35,8 @@ class RMQLearningExperiment(Experiment):
             k,
             alpha_decay,
             epsilon_decay,
+            0.0,
+            None,
             rep
         )
 

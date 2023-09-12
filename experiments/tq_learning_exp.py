@@ -37,6 +37,8 @@ class TQLearningExperiment(Experiment):
             k,
             alpha_decay,
             epsilon_decay,
+            0.0,
+            None,
             rep
         )
 
@@ -119,9 +121,5 @@ class TQLearningExperiment(Experiment):
         # env.close()
 
         sys.stdout = sys.__stdout__
-
-        for d_id, d in drivers.items():
-            print(d.get_iteration())
-            break
 
         return [env.avg_travel_time, gen_real, gen_estimated, gen_diff, gen_relative_diff]
