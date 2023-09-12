@@ -145,7 +145,7 @@ class Distribution(object):
 	# return the list of available distributions
 	@staticmethod
 	def get_list_of_distributions():
-		return Distribution.__dist_list.keys()
+		return Distribution.__dist_list.values()
 
 	# generate the specified number of samples and plot them as a histogram
 	def plot_distribution(self, n_of_samples=1000000):

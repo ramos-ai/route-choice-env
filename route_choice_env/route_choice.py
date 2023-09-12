@@ -51,11 +51,9 @@ class RouteChoicePZ(ParallelEnv):
 
         # -- Env properties
         self.__agent_vehicles_factor = agent_vehicles_factor
-        print(f'>>> EVALUATING DIST NAME: {preference_dist_name}' )
         if preference_dist_name is None:
             self.__preference_money_over_time = Distribution(Distribution.DIST_FIXED)
         else:
-            print('>>> PRINTING TOTAL FLOW: ', self.__road_network.get_total_flow() )
             self.__preference_money_over_time = Distribution(dist=Distribution.get_dist_id(preference_dist_name), num_of_samples=self.__road_network.get_total_flow())
         self.__normalize_costs = normalise_costs
 
