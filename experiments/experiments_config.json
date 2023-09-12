@@ -1,62 +1,92 @@
 [
   {
-    "episodes": 10000,
-    "net": ["BBraess_7_2100_10_c1_900"],
+    "episodes": 1000,
+    "net": ["Braess_1_4200_10_c1"],
+    "k": [3],
+    "alpha_decays": [0.99],
+    "epsilon_decays": [0.99],
+    "revenue_redistribution_rate": [0.0],
+    "preference_dist_name": [null],
+    "rep": 1
+  },
+  {
+    "episodes": 1000,
+    "net": ["Braess_2_4200_10_c1", "Braess_3_4200_10_c1"],
     "k": [4],
-    "alpha_decays": [0.999],
-    "epsilon_decays": [0.999],
+    "alpha_decays": [0.995],
+    "epsilon_decays": [0.995],
     "revenue_redistribution_rate": [0.0],
-    "preference_dist_name": ["DIST_UNIFORM"],
+    "preference_dist_name": [null],
     "rep": 1
   },
   {
-    "episodes": 10000,
-    "net": ["Braess_7_4200_10_c1"],
-    "k": [16],
-    "alpha_decays": [0.999],
-    "epsilon_decays": [0.999],
-    "revenue_redistribution_rate": [0.5],
-    "preference_dist_name": ["DIST_TRUNC_NORMAL"],
+    "episodes": 1000,
+    "net": ["Braess_4_4200_10_c1"],
+    "k": [4],
+    "alpha_decays": [0.99],
+    "epsilon_decays": [0.99],
+    "revenue_redistribution_rate": [0.0],
+    "preference_dist_name": [null],
     "rep": 1
   },
   {
-    "episodes": 10000,
+    "episodes": 1000,
+    "net": ["Braess_5_4200_10_c1"],
+    "k": [8],
+    "alpha_decays": [0.995],
+    "epsilon_decays": [0.995],
+    "revenue_redistribution_rate": [0.0],
+    "preference_dist_name": [null],
+    "rep": 1
+  },
+  {
+    "episodes": 1000,
+    "net": ["Braess_6_4200_10_c1", "Braess_7_4200_10_c1"],
+    "k": [8],
+    "alpha_decays": [0.995],
+    "epsilon_decays": [0.995],
+    "revenue_redistribution_rate": [0.0],
+    "preference_dist_name": [null],
+    "rep": 1
+  },
+  {
+    "episodes": 1000,
+    "net": ["BBraess_1_2100_10_c1_2100"],
+    "k": [4],
+    "alpha_decays": [0.98],
+    "epsilon_decays": [0.98],
+    "revenue_redistribution_rate": [0.0],
+    "preference_dist_name": [null],
+    "rep": 1
+  },
+  {
+    "episodes": 1000,
+    "net": ["BBraess_3_2100_10_c1_900"],
+    "k": [4],
+    "alpha_decays": [0.995],
+    "epsilon_decays": [0.995],
+    "revenue_redistribution_rate": [0.0],
+    "preference_dist_name": [null],
+    "rep": 1
+  },
+  {
+    "episodes": 1000,
+    "net": ["BBraess_5_2100_10_c1_900", "BBraess_7_2100_10_c1_900"],
+    "k": [4],
+    "alpha_decays": [0.995],
+    "epsilon_decays": [0.995],
+    "revenue_redistribution_rate": [0.0],
+    "preference_dist_name": [null],
+    "rep": 1
+  },
+  {
+    "episodes": 1000,
     "net": ["OW"],
-    "k": [12],
-    "alpha_decays": [0.999],
-    "epsilon_decays": [0.999],
+    "k": [8],
+    "alpha_decays": [0.995],
+    "epsilon_decays": [0.995],
     "revenue_redistribution_rate": [0.0],
-    "preference_dist_name": ["DIST_TRUNC_NORMAL"],
-    "rep": 1
-  },
-  {
-    "episodes": 10000,
-    "net": ["SF"],
-    "k": [12],
-    "alpha_decays": [0.9997],
-    "epsilon_decays": [0.999],
-    "revenue_redistribution_rate": [0.0],
-    "preference_dist_name": ["DIST_UNIFORM"],
-    "rep": 1
-  },
-  {
-    "episodes": 10000,
-    "net": ["Anaheim"],
-    "k": [16],
-    "alpha_decays": [0.999],
-    "epsilon_decays": [0.999],
-    "revenue_redistribution_rate": [0.0],
-    "preference_dist_name": ["DIST_TRUNC_NORMAL"],
-    "rep": 1
-  },
-  {
-    "episodes": 10000,
-    "net": ["Eastern-Massachusetts"],
-    "k": [16],
-    "alpha_decays": [0.999],
-    "epsilon_decays": [0.999],
-    "revenue_redistribution_rate": [0.0],
-    "preference_dist_name": ["DIST_UNIFORM"],
+    "preference_dist_name": [null],
     "rep": 1
   }
 ]

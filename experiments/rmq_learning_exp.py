@@ -26,7 +26,16 @@ def get_rmq_learning_agents(env: RouteChoicePZ, policy: Policy):
 
 class RMQLearningExperiment(Experiment):
 
-    def __init__(self, _id: int, episodes: int, net: str, k: int, alpha_decay: float, epsilon_decay: float, rep: int):
+    def __init__(self,
+                _id: int,
+                episodes: int,
+                net: str,
+                k: int,
+                alpha_decay: float,
+                epsilon_decay: float,
+                revenue_redistribution_rate: float,
+                preference_dist_name: str,
+                rep: int):
         super(RMQLearningExperiment, self).__init__(
             _id,
             'RMQLearning',
@@ -35,8 +44,8 @@ class RMQLearningExperiment(Experiment):
             k,
             alpha_decay,
             epsilon_decay,
-            0.0,
-            None,
+            revenue_redistribution_rate,
+            preference_dist_name,
             rep
         )
 
