@@ -220,7 +220,7 @@ class RouteChoicePZ(ParallelEnv):
 
         obs_n = {d_id: self.observation_space(d_id) for d_id in self.agents}
         if not return_info:
-            return obs_n
+            return obs_n, {}
 
         info_n = {d_id: self.__get_info(d_id) for d_id in self.agents}
         return obs_n, info_n
