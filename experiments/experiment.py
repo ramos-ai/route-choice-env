@@ -24,20 +24,33 @@ class Experiment(object):
     EPSILON_DECAY: float
     MIN_EPSILON: float
 
-    def __init__(self, _id: int, algorithm: str, episodes: int, net: str, k: int, decay: float, rep: int):
+    def __init__(self,
+                _id: int,
+                algorithm: str,
+                episodes: int,
+                net: str,
+                k: int,
+                alpha_decay: float,
+                epsilon_decay: float,
+                revenue_redistribution_rate: float,
+                preference_dist_name: str,
+                rep: int
+                ):
         self._ID = _id
         self.ALG = algorithm
         self.ITERATIONS = episodes
         self.NET = net
         self.K = k
-        self.DECAY = decay
+        self.DECAY = alpha_decay
         self.REP = rep
         self.ALPHA = 1.0
-        self.ALPHA_DECAY = decay
+        self.ALPHA_DECAY = alpha_decay
         self.MIN_ALPHA = 0.0
         self.EPSILON = 1.0
-        self.EPSILON_DECAY = decay
+        self.EPSILON_DECAY = epsilon_decay
         self.MIN_EPSILON = 0.0
+        self.REVENUE_REDISTRIBUTION_RATE = revenue_redistribution_rate
+        self.PREFERENCE_DIST_NAME = preference_dist_name
 
         # LOG
         self.LOG_V = '00'
@@ -46,6 +59,25 @@ class Experiment(object):
     @property
     def results_summary_filename(self):
         return f'{self.LOGPATH}/results_v{self.LOG_V}_summary.txt'
+
+    def __repr__(self):
+        return f"""
+        Experiment: {self._ID}
+        Algorithm: {self.ALG}
+        Iterations: {self.ITERATIONS}
+        Network: {self.NET}
+        K: {self.K}
+        Decay: {self.DECAY}
+        Replications: {self.REP}
+        Alpha: {self.ALPHA}
+        Alpha Decay: {self.ALPHA_DECAY}
+        Min Alpha: {self.MIN_ALPHA}
+        Epsilon: {self.EPSILON}
+        Epsilon Decay: {self.EPSILON_DECAY}
+        Min Epsilon: {self.MIN_EPSILON}
+        Revenue Redistribution Rate: {self.REVENUE_REDISTRIBUTION_RATE}
+        Preference Distribution Name: {self.PREFERENCE_DIST_NAME}
+        """
 
     def run(self):
         results = {}
@@ -89,7 +121,7 @@ class Experiment(object):
 
     def __create_log_path(self):
         logpath = f'{os.path.dirname(os.path.abspath(__file__))}'
-        paths = ['/results', f'/{self.ALG}', f'/{self.NET}', f'/K_{self.K}', f'/DECAY_{self.DECAY}']
+        paths = ['/results', f'/{self.ALG}', f'/{self.NET}', f'/K_{self.K}', f'/DECAY_{self.DECAY}', f'/REV_{self.REVENUE_REDISTRIBUTION_RATE}', f'/PREF_{self.PREFERENCE_DIST_NAME}']
         for _path in paths:
             logpath += _path
             if not os.path.exists(logpath):

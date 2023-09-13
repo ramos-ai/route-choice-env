@@ -82,11 +82,11 @@ Available networks specification can be found at [MASLAB's transportation networ
 
 Single thread:
 
-`$ python3 experiments/experiment_executor.py --alg RMQLearning`
+`$ python3 experiments/main.py --alg RMQLearning`
 
 Multiprocess (faster but more expensive):
 
-`$ python3 experiments/experiment_executor.py --alg RMQLearning --workers 6`
+`$ python3 experiments/main.py --alg RMQLearning --workers 6`
 
 
 ## Citing

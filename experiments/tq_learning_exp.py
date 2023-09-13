@@ -28,14 +28,26 @@ def get_tq_learning_agents(env: RouteChoicePZ, policy: Policy):
 
 class TQLearningExperiment(Experiment):
 
-    def __init__(self, _id: int, episodes: int, net: str, k: int, decay: float, rep: int):
+    def __init__(self,
+                _id: int,
+                episodes: int,
+                net: str,
+                k: int,
+                alpha_decay: float,
+                epsilon_decay: float,
+                revenue_redistribution_rate: float,
+                preference_dist_name: str,
+                rep: int):
         super(TQLearningExperiment, self).__init__(
             _id,
             'TQLearning',
             episodes,
             net,
             k,
-            decay,
+            alpha_decay,
+            epsilon_decay,
+            revenue_redistribution_rate,
+            preference_dist_name,
             rep
         )
 
@@ -52,7 +64,7 @@ class TQLearningExperiment(Experiment):
             route_filename = f"{self.NET}.TRC.routes"
 
         # initiate environment
-        env = RouteChoicePZ(self.NET, self.K, agent_vehicles_factor=10, route_filename=route_filename)
+        env = RouteChoicePZ(self.NET, self.K, route_filename=route_filename)
 
         # instantiate global policy
         policy = EpsilonGreedy(self.EPSILON, self.MIN_EPSILON)
@@ -100,8 +112,7 @@ class TQLearningExperiment(Experiment):
             # -------------------------
             for d_id, d in drivers.items():
                 try:
-                    od_pair = env.get_driver_od_pair(d_id)
-                    d.update_real_regret(env.routes_costs_min[od_pair])
+                    d.update_real_regret(env.routes_costs_min[env.get_driver_od_pair(d_id)])
                 except AttributeError:  # validation in case driver does not calculate real regret
                     pass
 

@@ -1,5 +1,6 @@
 # IDE
 .idea/
+.vscode/
 
 # Package
 *.egg-info/
@@ -15,5 +16,6 @@ __pycache__/
 backup
 
 # Results
+.ipynb_checkpoints/
 analytics
 experiments/results

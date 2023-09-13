@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -22,7 +22,7 @@ jobs:
       run: |
         pip install pytest
         pip install -e .
-    - name: Full Python tests
+    - name: Env test
       run: |
-        pytest tests/test_env.py
+        pytest tests/env_test.py
 
