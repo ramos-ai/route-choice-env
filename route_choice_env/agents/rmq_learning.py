@@ -1,3 +1,4 @@
+from typing import List
 from route_choice_env.core import Agent, Policy
 
 
@@ -9,7 +10,7 @@ class RMQLearning(Agent):  # Implementation of Regret Minimisation Q-Learning
     """
 
     def __init__(self,
-                 actions: list[int],
+                 actions: List[int],
                  d_id: str,
                  initial_costs=None,
                  extrapolate_costs=True,
