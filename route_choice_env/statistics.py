@@ -1,8 +1,6 @@
 from pathlib import Path
-from typing import Union
+from typing import Dict, Union
 
-import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 
 from route_choice_env.route_choice import RouteChoicePZ
@@ -22,7 +20,7 @@ class Statistics(object):
 
     def __init__(self,
                  env: RouteChoicePZ,
-                 driver_agents: dict[str, Union[RMQLearning, TQLearning]],
+                 driver_agents: Dict[str, Union[RMQLearning, TQLearning]],
                  iterations,
                  stat_regret_diff,
                  stat_all,

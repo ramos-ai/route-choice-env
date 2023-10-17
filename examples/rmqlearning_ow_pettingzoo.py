@@ -1,4 +1,5 @@
 import timeit
+from typing import Dict
 
 from route_choice_env.route_choice import RouteChoicePZ
 from route_choice_env.core import Policy
@@ -17,7 +18,7 @@ def get_policy() -> Policy:
     return EpsilonGreedy(epsilon=1.0, min_epsilon=0.0)
 
 
-def get_learning_agents(env: RouteChoicePZ, policy: Policy) -> dict[AgentID, RMQLearning]:
+def get_learning_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID, RMQLearning]:
     obs_n, info_n = env.reset(return_info=True)
     return {
         d_id: RMQLearning(

@@ -1,5 +1,6 @@
 import os
 import contextlib
+from typing import Dict
 from concurrent.futures import ProcessPoolExecutor
 
 
@@ -106,7 +107,7 @@ class Experiment(object):
         """
         raise NotImplementedError
 
-    def __log_summary(self, results: dict[int, tuple]):
+    def __log_summary(self, results: Dict[int, tuple]):
         with open(self.results_summary_filename, 'a+') as log:
             log.write(f'Results\t{self.ALG}\t{self.NET}\n')
             log.write('rep\tavg-tt\treal\test\tabsdiff\treldiff\n')  # \tproximityUE\n')
