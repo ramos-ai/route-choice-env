@@ -78,6 +78,9 @@ class GTQLearningExperiment(Experiment):
         # instantiate learning agents as drivers
         drivers = get_gtq_learning_agents(env, policy)
 
+        # learning rate
+        alpha = self.ALPHA
+
         # sum of the average regret per OD pair (used to measure the averages through time)
         # for each OD pair, it stores a tuple [w, x, y, z]
         # - w the average real regret
@@ -106,13 +109,13 @@ class GTQLearningExperiment(Experiment):
 
             # update strategy (Q table)
             for d_id in drivers.keys():
-                drivers[d_id].update_strategy(obs_n[d_id], reward_n[d_id], info_n[d_id], alpha=self.ALPHA)
+                drivers[d_id].update_strategy(obs_n[d_id], reward_n[d_id], info_n[d_id], alpha=alpha)
 
             # update global learning rate (alpha)
-            if self.ALPHA > self.MIN_ALPHA:
-                self.ALPHA = self.ALPHA * self.ALPHA_DECAY
+            if alpha > self.MIN_ALPHA:
+                alpha = alpha * self.ALPHA_DECAY
             else:
-                self.ALPHA = self.MIN_ALPHA
+                alpha = self.MIN_ALPHA
 
             # -- episode statistics
             # -------------------------
