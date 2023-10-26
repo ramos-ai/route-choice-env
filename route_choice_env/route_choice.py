@@ -79,10 +79,8 @@ class RouteChoicePZ(ParallelEnv):
 
         self.__iteration = 0
 
-
         # dev
         # ---
-        # if revenue_redistribution_rate > 0:
         self.tolls_share_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
         self.side_payment_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
         # ---
@@ -166,18 +164,15 @@ class RouteChoicePZ(ParallelEnv):
             self.__flow_distribution[od_order][route_id] += self.get_driver_flow(d_id)
 
 
-            # dev
-            # --- we are assigning the flow to the network (evaluate assignment) only AFTER we calculated the tolls
-            # self.tolls_share_per_od[od_order] += self.__get_marginal_cost(self.get_driver_od_pair(d_id), route_id)
-            # ---
-
         self.__avg_travel_time, self.__normalised_avg_travel_time = self.__road_network.evaluate_assignment(self.__flow_distribution, self.__flow_distribution_w_preferences)
 
         # Update the sum of routes' costs (used to compute the averages)
         self.__update_routes_costs_stats()
 
         # dev
-        # ---
+        # --- calculating tolls for the current iteration
+        self.tolls_share_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
+
         for d_id, r_id in actions.items():
             od = self.get_driver_od_pair(d_id)
             od_order = self.__road_network.get_OD_order(od)
@@ -186,13 +181,12 @@ class RouteChoicePZ(ParallelEnv):
             toll = (self.__get_marginal_cost(od, r_id) + self.__get_reward(d_id) * preference) / preference
             self.tolls_share_per_od[od_order] += toll
 
-            # ---
+        # --- calculating side payments for the current iteration
         if self.__revenue_redistribution_rate > 0.0:
             for od in self.road_network.get_OD_pairs():
                 od_i: int = self.road_network.get_OD_order(od)
                 temp = self.tolls_share_per_od[od_i] * self.__revenue_redistribution_rate
                 self.side_payment_per_od[od_i] = temp / self.road_network.get_OD_flow(od)
-
         # ---
 
         for d_id in actions.keys():
@@ -294,10 +288,6 @@ class RouteChoicePZ(ParallelEnv):
         if r_id not in self.road_network.get_routes_ids(od_pair):
             return 0.0
         return self.__get_route_travel_time(od_pair, r_id) - self.get_free_flow_travel_times(od_pair)[r_id]
-
-    def __get_toll_share_for_od(self, od_pair: str):
-        od_i: int = self.road_network.get_OD_order(od_pair)
-        return self.tolls_share_per_od[od_i]
 
     def __get_side_payment_for_od(self, od_pair):
         od_i: int = self.road_network.get_OD_order(od_pair)
