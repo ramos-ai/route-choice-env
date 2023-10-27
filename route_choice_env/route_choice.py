@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Mapping, Optional
 
 from route_choice_env.core import Driver
+from route_choice_env.graphics import EnvViewer
 from route_choice_env.misc import Distribution
 from route_choice_env.problem import Network
 
@@ -78,6 +79,7 @@ class RouteChoicePZ(ParallelEnv):
         self.action_spaces = {a: self.action_space(a) for a in self.agents}
 
         self.__iteration = 0
+        self.viewer = None
 
         # dev
         # ---
@@ -120,7 +122,7 @@ class RouteChoicePZ(ParallelEnv):
     def __create_drivers(self):
         for od in self.od_pairs:
             n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
-            self.__drivers.update({
+            self.__drivers = {
                 f'driver_{od}_{i}': Driver(
                     d_id=f'driver_{od}_{i}',
                     od_pair=od,
@@ -128,8 +130,7 @@ class RouteChoicePZ(ParallelEnv):
                     preference_money_over_time=self.__preference_money_over_time.sample()  # agent's preference
                 )
                 for i in range(n_agents)
-            })
-
+            }
 
     # -- Environment
     # -----------------
@@ -223,7 +224,9 @@ class RouteChoicePZ(ParallelEnv):
         super().seed(seed)
 
     def render(self):
-        raise NotImplementedError
+        if self.viewer is None:
+            self.viewer = EnvViewer(self)
+        self.viewer.render()
 
     def close(self):
         del self

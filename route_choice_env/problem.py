@@ -8,6 +8,7 @@ from sympy import diff
 class Network:
 
     def __init__(self, network_name, routes_per_OD=None, alt_route_file_name=None):
+        self.name = network_name
 
         self.__N = {}
         self.__L = {}
@@ -30,6 +31,15 @@ class Network:
         for od in self.get_OD_pairs():
             for r in self.get_routes(od):
                 r.set_free_flow_travel_time(r.get_cost(False), r.get_cost(True))
+
+    def get_OD_matrix(self):
+        return self.__OD_matrix
+
+    def get_N(self):
+        return self.__N
+
+    def get_L(self):
+        return self.__L
 
     def get_route_set_size(self, od=None):
         if od:
