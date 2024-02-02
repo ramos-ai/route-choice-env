@@ -122,7 +122,7 @@ class RouteChoicePZ(ParallelEnv):
     def __create_drivers(self):
         for od in self.od_pairs:
             n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
-            self.__drivers = {
+            self.__drivers.update({
                 f'driver_{od}_{i}': Driver(
                     d_id=f'driver_{od}_{i}',
                     od_pair=od,
@@ -130,7 +130,7 @@ class RouteChoicePZ(ParallelEnv):
                     preference_money_over_time=self.__preference_money_over_time.sample()  # agent's preference
                 )
                 for i in range(n_agents)
-            }
+            })
 
     # -- Environment
     # -----------------
@@ -225,8 +225,8 @@ class RouteChoicePZ(ParallelEnv):
 
     def render(self):
         if self.viewer is None:
-            self.viewer = EnvViewer(self)
-        self.viewer.render()
+            self.viewer = EnvViewer(self, self.road_network)
+        self.viewer.render(self.road_network)
 
     def close(self):
         del self
