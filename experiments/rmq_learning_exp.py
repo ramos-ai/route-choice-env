@@ -7,7 +7,7 @@ from route_choice_env.statistics import Statistics
 from route_choice_env.agents.rmq_learning import RMQLearning
 from route_choice_env.policy import EpsilonGreedy
 
-from experiments.experiment import Experiment
+from experiment import Experiment
 
 
 def get_rmq_learning_agents(env: RouteChoicePZ, policy: Policy):

@@ -7,7 +7,7 @@ from route_choice_env.statistics import Statistics
 from route_choice_env.agents.gtq_learning import GTQLearning
 from route_choice_env.policy import EpsilonGreedy
 
-from experiments.experiment import Experiment
+from experiment import Experiment
 
 
 N_EXPERIMENTS = 0
