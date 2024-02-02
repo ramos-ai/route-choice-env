@@ -9,11 +9,11 @@ import argparse
 import numpy as np
 from pathlib import Path
 
-from experiments.experiment import Experiment
+from experiment import Experiment
 
-from experiments.rmq_learning_exp import RMQLearningExperiment
-from experiments.tq_learning_exp import TQLearningExperiment
-from experiments.gtq_learning_exp import GTQLearningExperiment
+from rmq_learning_exp import RMQLearningExperiment
+from tq_learning_exp import TQLearningExperiment
+from gtq_learning_exp import GTQLearningExperiment
 
 
 class InvalidAlgorithm(Exception):
