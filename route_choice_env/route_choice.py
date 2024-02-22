@@ -119,15 +119,23 @@ class RouteChoicePZ(ParallelEnv):
 
     def __create_drivers(self):
         for od in self.od_pairs:
-            n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
+            od_flow = self.__road_network.get_OD_flow(od)
+            n_of_agents = int( Decimal(od_flow) / Decimal(self.__agent_vehicles_factor) )
+            remainder = float( Decimal(od_flow) - Decimal(n_of_agents) * Decimal(self.__agent_vehicles_factor) )
+
+            if remainder > 0:
+                n_of_agents += 1  # extra agent for remainder flow
+
+            # n_agents = int(Decimal(str(self.__road_network.get_OD_flow(od))) / Decimal(str(float(self.__agent_vehicles_factor))))
+
             self.__drivers.update({
                 f'driver_{od}_{i}': Driver(
                     d_id=f'driver_{od}_{i}',
                     od_pair=od,
-                    flow=self.__agent_vehicles_factor,
+                    flow=remainder if i == 0 and remainder > 0 else self.__agent_vehicles_factor,
                     preference_money_over_time=self.__preference_money_over_time.sample()  # agent's preference
                 )
-                for i in range(n_agents)
+                for i in range(n_of_agents)
             })
 
 
@@ -160,9 +168,11 @@ class RouteChoicePZ(ParallelEnv):
             except KeyError:
                 print(f'Driver {d_id} does not exist in the environment')
                 continue
-            od_order = self.__road_network.get_OD_order(self.get_driver_od_pair(d_id))
-            self.__flow_distribution[od_order][route_id] += self.get_driver_flow(d_id)
 
+            d_flow = self.get_driver_flow(d_id)
+            od_order = self.__road_network.get_OD_order(self.get_driver_od_pair(d_id))
+            self.__flow_distribution[od_order][route_id] += d_flow
+            self.__flow_distribution_w_preferences[od_order][route_id] += d_flow * (1 - self.get_driver_preference_money_over_time(d_id))
 
         self.__avg_travel_time, self.__normalised_avg_travel_time = self.__road_network.evaluate_assignment(self.__flow_distribution, self.__flow_distribution_w_preferences)
 
