@@ -2,9 +2,9 @@ import numpy as np
 from typing import Dict
 from pettingzoo.utils.conversions import AgentID
 
+import route_choice_env.policy as policy
 from route_choice_env.core import Policy
 from route_choice_env.route_choice import RouteChoicePZ
-from route_choice_env.policy import EpsilonGreedy
 
 from route_choice_env.agents.simple_driver import SimpleDriver
 from route_choice_env.agents.rmq_learning import RMQLearning
@@ -12,7 +12,9 @@ from route_choice_env.agents.tq_learning import TQLearning
 from route_choice_env.agents.gtq_learning import GTQLearning
 
 
-def get_simple_driver_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID, SimpleDriver]:
+# Agents
+# ======
+def get_simple_driver_agents(env, policy) -> Dict[AgentID, SimpleDriver]:
     return {
         d_id: SimpleDriver(
             d_id=d_id,
@@ -23,7 +25,7 @@ def get_simple_driver_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID
     }
 
 
-def get_rmq_learning_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID, RMQLearning]:
+def get_rmq_learning_agents(env, policy) -> Dict[AgentID, RMQLearning]:
     obs_n, info_n = env.reset(return_info=True)
     return {
         d_id: RMQLearning(
@@ -37,7 +39,7 @@ def get_rmq_learning_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID,
     }
 
 
-def get_tq_learning_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID, TQLearning]:
+def get_tq_learning_agents(env, policy) -> Dict[AgentID, TQLearning]:
     obs_n, info_n = env.reset(return_info=True)
     return {
         d_id: TQLearning(
@@ -50,18 +52,33 @@ def get_tq_learning_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID, 
     }
 
 
-def get_gtq_learning_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID, GTQLearning]:
+def get_gtq_learning_agents(env, policy) -> Dict[AgentID, GTQLearning]:
     obs_n, info_n = env.reset(return_info=True)
     return {
         d_id: GTQLearning(
             d_id=d_id,
             actions=list(range(env.action_space(d_id).n)),
             extrapolate_costs=False,
-            # preference_money_over_time=env.get_driver_preference_money_over_time(d_id),
             policy=policy
         )
         for d_id in env.agents
     }
+
+
+# Policy
+# ======
+def get_epsilon_greedy_policy(epsilon=1.0, min_epsilon=0.0):
+    return policy.EpsilonGreedy(epsilon, min_epsilon)
+
+
+def get_random_policy():
+    return policy.Random()
+
+
+# Environment
+# ===========
+def get_env(net='OW', k=8):
+    return RouteChoicePZ(net, k)
 
 
 def simulate(
@@ -102,7 +119,7 @@ def simulate(
     # instantiate global policy
     epsilon = 1.0
 
-    policy = EpsilonGreedy(epsilon, min_epsilon)
+    policy: Policy = get_epsilon_greedy_policy(epsilon, min_epsilon)
 
     # instantiate learning agents as drivers
     if alg == 'RMQLearning':

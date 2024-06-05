@@ -1,41 +1,19 @@
 import timeit
 from pettingzoo.utils.conversions import AgentID
 
-from route_choice_env.route_choice import RouteChoicePZ
-from route_choice_env.core import Policy
-
+import route_choice_env.services as services
 from route_choice_env.agents.simple_driver import SimpleDriver
-from route_choice_env.policy import Random
-
-
-def get_env():
-    return RouteChoicePZ('OW', 8)
-
-
-def get_policy() -> Policy:
-    return Random()
-
-
-def get_agents(env: RouteChoicePZ, policy: Policy):
-    return {
-        d_id: SimpleDriver(
-            d_id=d_id,
-            actions=list(range(env.action_space(d_id).n)),
-            policy=policy
-        )
-        for d_id in env.agents
-    }
 
 
 def main(
     ITERATIONS = 1000,
 ):
-
-    env = get_env()
-
-    policy = get_policy()
-
-    drivers: dict[AgentID, SimpleDriver] = get_agents(env, policy)
+    # instantiate env
+    env = services.get_env()
+    # instantiate global policy
+    policy = services.get_random_policy()
+    # instantiate learning agents as drivers
+    drivers: dict[AgentID, "SimpleDriver"] = services.get_simple_driver_agents(env, policy)
 
     best = float('inf')
     for _ in range(ITERATIONS):
@@ -48,7 +26,6 @@ def main(
             best = env.avg_travel_time
 
         flow_dist = env.road_network_flow_distribution
-        print(flow_dist)
 
         env.reset()
 
@@ -59,4 +36,7 @@ def main(
 
 
 if __name__ == '__main__':
+    starttime = timeit.default_timer()
+    print("Exp start time is :", starttime)
     main()
+    print("Exp time difference is :", timeit.default_timer() - starttime)

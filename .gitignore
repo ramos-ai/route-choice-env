@@ -8,6 +8,7 @@
 # Env
 .env
 venv/
+.venv/
 
 # Cache
 __pycache__/
@@ -16,9 +17,6 @@ __pycache__/
 backup
 
 # Results
-results
-
-# Results
 .ipynb_checkpoints/
-analytics
+results
 experiments/results

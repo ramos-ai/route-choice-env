@@ -1,35 +1,8 @@
 import timeit
-from typing import Dict
-
-from route_choice_env.route_choice import RouteChoicePZ
-from route_choice_env.core import Policy
-
-from route_choice_env.agents.rmq_learning import RMQLearning
-from route_choice_env.policy import EpsilonGreedy
-
 from pettingzoo.utils.conversions import AgentID
 
-
-def get_env():
-    return RouteChoicePZ('OW', 8)
-
-
-def get_policy() -> Policy:
-    return EpsilonGreedy(epsilon=1.0, min_epsilon=0.0)
-
-
-def get_learning_agents(env: RouteChoicePZ, policy: Policy) -> Dict[AgentID, RMQLearning]:
-    obs_n, info_n = env.reset(return_info=True)
-    return {
-        d_id: RMQLearning(
-            d_id=d_id,
-            actions=list(range(env.action_space(d_id).n)),
-            initial_costs=info_n[d_id]['free_flow_travel_times'],
-            extrapolate_costs=True,
-            policy=policy
-        )
-        for d_id in env.agents
-    }
+import route_choice_env.services as services
+from route_choice_env.agents.rmq_learning import RMQLearning
 
 
 def main(
@@ -38,15 +11,12 @@ def main(
         ALPHA=1.0,
         MIN_ALPHA=0.0
 ):
-
     # instantiate env
-    env = get_env()
-
+    env = services.get_env()
     # instantiate global policy
-    policy = get_policy()
-
+    policy = services.get_epsilon_greedy_policy()
     # instantiate learning agents as drivers
-    drivers: dict[AgentID, RMQLearning] = get_learning_agents(env, policy)
+    drivers: dict[AgentID, RMQLearning] = services.get_rmq_learning_agents(env, policy)
 
     best = float('inf')
     for _ in range(ITERATIONS):
