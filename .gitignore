@@ -16,6 +16,9 @@ __pycache__/
 backup/
 
 # Results
+results
+
+# Results
 .ipynb_checkpoints/
 analytics/
 results/
