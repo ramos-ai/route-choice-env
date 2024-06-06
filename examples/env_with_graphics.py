@@ -1,4 +1,5 @@
 import timeit
+from argparse import ArgumentParser
 from time import time, sleep
 
 from route_choice_env.route_choice import RouteChoicePZ
@@ -12,12 +13,22 @@ from route_choice_env.policy import EpsilonGreedy, Random
 from pettingzoo.utils.conversions import AgentID
 
 
-def get_env():
-    return RouteChoicePZ('OW', 12)
+def get_env(net):
+    routes_per_od = {
+        'BBraess_7_2100_10_c1_900': 4,
+        'Braess_1_4200_10_c1': 3,
+        'Braess_7_4200_10_c1': 16,
+        'OW': 12,
+        'SF': 12,
+        'Anaheim': 16,
+        'Eastern-Massachusetts': 16,
+    }
+
+    return RouteChoicePZ(net, routes_per_od[net])
 
 
 def get_policy() -> Policy:
-    return Random()
+    # return Random()
     return EpsilonGreedy(epsilon=1.0, min_epsilon=0.0)
 
 
@@ -46,6 +57,7 @@ def get_learning_agents(env: RouteChoicePZ, policy: Policy) -> dict[AgentID, RMQ
 
 
 def main(
+        NET='OW',
         ITERATIONS=1000,
         DECAY=0.995,
         ALPHA=1.0,
@@ -53,7 +65,7 @@ def main(
 ):
 
     # instantiate env
-    env = get_env()
+    env = get_env(NET)
     env.render()
 
     print('starting simulation...')
@@ -63,8 +75,6 @@ def main(
     policy = get_policy()
 
     # instantiate learning agents as drivers
-    # drivers: dict[AgentID, RMQLearning] = get_learning_agents(env, policy)
-
     drivers: dict[AgentID, RMQLearning] = get_simple_agents(env, policy)
 
     best = float('inf')
@@ -74,38 +84,18 @@ def main(
         act_n = {d_id: drivers[d_id].choose_action() for d_id in env.agents}
 
         # update global policy (epsilon)
-        # policy.update()  # policy.update(DECAY)
+        policy.update()
 
         # step environment
-
-        print('stepping env...')
-        start_time = time()
         obs_n_, reward_n, terminal_n, truncated_n, info_n = env.step(act_n)
-        print(f'step time: {time() - start_time}')
 
-        print('rendering scene env...')
-        start_time = time()
         env.render()
-        print(f'render time: {time() - start_time}')
 
         # test for best avg travel time
         if env.avg_travel_time < best:
             best = env.avg_travel_time
 
-        """
-        # Update strategy (Q table)
-        for d_id in env.agents:
-            drivers[d_id].update_strategy(obs_n_[d_id], reward_n[d_id], info_n[d_id], alpha=ALPHA)
-
-        # update global learning rate (alpha)
-        if ALPHA > MIN_ALPHA:
-            ALPHA = ALPHA * DECAY
-        else:
-            ALPHA = MIN_ALPHA
-        """
-
         solution = env.road_network_flow_distribution
-        # print(solution)
 
         env.reset()
 
@@ -117,7 +107,11 @@ def main(
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument('--net', type=str, default='OW')
+    args = parser.parse_args()
+
     starttime = timeit.default_timer()
     print("Exp start time is :", starttime)
-    main()
+    main(args.net)
     print("Exp time difference is :", timeit.default_timer() - starttime)

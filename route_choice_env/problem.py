@@ -14,6 +14,7 @@ class Network:
         self.__L = {}
         self.__routes = {}
         self.__normalisation_factor_routes = float('-inf')
+        self.render_order = []
 
         self.__create_graph(network_name)
 
@@ -216,6 +217,9 @@ class Network:
             elif taglist[0] == 'od':
                 continue
 
+            elif taglist[0] == 'order':
+                self.render_order.append(taglist[1])
+
             else:
                 raise Exception('Network file does not comply with the specification! (line %d: "%s")' % (lineid, line))
 
@@ -394,6 +398,9 @@ class Link:
 
         # create/reset non-static variables (those that may change during simulations, like flow and cost)
         self.reset()
+
+    def get_cost(self, value):
+        return self.__get_cost(value)
 
     def __get_cost(self, value):
         return self.__cost_function.evaluate({self.__param_name: value})

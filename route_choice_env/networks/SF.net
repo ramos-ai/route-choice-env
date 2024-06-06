@@ -650,3 +650,44 @@ od 24|21 24 21 500
 od 24|22 24 22 1100
 od 24|23 24 23 700
 od 24|24 24 24 0
+#render
+order 1
+order _
+order _
+order 2
+order _
+order 3
+order 4
+order 5
+order 6
+order _
+order _
+order _
+order 9
+order 8
+order 7
+order 12
+order 11
+order 10
+order 16
+order 18
+order _
+order _
+order _
+order 17
+order _
+order _
+order 14
+order 15
+order 19
+order _
+order _
+order 23
+order 22
+order _
+order _
+order 13
+order 24
+order 21
+order 20
+order _

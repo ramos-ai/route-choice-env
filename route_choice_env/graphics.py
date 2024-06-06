@@ -1,5 +1,3 @@
-from time import sleep
-
 import pygame as pg
 import sys
 
@@ -8,56 +6,45 @@ from typing import Dict, List, Tuple
 from route_choice_env.problem import Network, Link, Node
 
 
-WIN_SIZE = (1200, 600)
+WIN_SIZE = (1200, 700)
 GRID_SIZES = {
-    'OW': (5, 3),
-    'SF': (6, 4)
+    'BBraess_7_2100_10_c1_900': (3, 8),  # 20
+    'Braess_1_4200_10_c1': (2, 2),  # 4
+    'Braess_7_4200_10_c1': (5, 8),  # 16
+    'OW': (5, 3),  # 13
+    'SF': (8, 5),  # 40
+    'Anaheim': (26, 16),  # 416
+    'Eastern-Massachusetts': (10, 12),  # 74
 }
 
-RED = (219, 68, 55)
-ORANGE = (239, 84, 16)
-YELLOW = (244, 180, 0)
-GREEN = (15, 157, 88)
-
 BLUE = (0, 121, 191)  # labels
-
 GRAY = (180, 180, 180)  # nodes and links
 
 
 class EnvViewer(object):
     """A viewer to render a road network environment."""
 
-    def __init__(self, env: 'AbstractEnv', road_network: Network, win_size=WIN_SIZE, grid_size=None) -> None:
+    def __init__(self, env: "AbstractEnv", road_network: Network, win_size=WIN_SIZE, grid_size=None) -> None:  # noqa: F821
          # init pygame modules
         pg.init()
-        # self.env = env
 
         # window size
         self.WIN_SIZE = win_size
         self.GRID_SIZE = GRID_SIZES[road_network.name]
 
-        self.font = pg.font.SysFont(None, 30)
-        # set opengl attr
-        # pg.display.gl_set_attribute(pg.GL_CONTEXT_MAJOR_VERSION, 3)
-        # pg.display.gl_set_attribute(pg.GL_CONTEXT_MINOR_VERSION, 3)
-        # pg.display.gl_set_attribute(pg.GL_CONTEXT_PROFILE_MASK, pg.GL_CONTEXT_PROFILE_CORE)
-
         # create opengl context
         self.screen = pg.display.set_mode(self.WIN_SIZE,)  # flags=pg.OPENGL | pg.DOUBLEBUF)
         pg.display.set_caption(f"RouteChoiceEnv - {road_network.name}")
-
-        # detect and use existing opengl context
-        # self.ctx = mgl.create_context()
 
         # create an object to help track time
         self.clock = pg.time.Clock()
         self.time = 0
 
+        # create a font object
+        self.font = pg.font.SysFont(None, 30)
+
         self.metric = 'cost'
-
-        # self.scene = None
         self.scene = build_scene(road_network, self.WIN_SIZE, self.GRID_SIZE, self.metric)
-
 
     def check_events(self):
         for event in pg.event.get():
@@ -80,11 +67,14 @@ class EnvViewer(object):
         # Clear the screen
         self.screen.fill((255, 255, 255))
 
-        for renderer in self.scene.renderers:
-            if renderer.element \
-                and renderer.element.collidepoint(pg.mouse.get_pos()):
+        mouse_pos = pg.mouse.get_pos()
 
-                renderer.display(self.screen, self.font, pg.mouse.get_pos())
+        for renderer in self.scene.renderers:
+            if (renderer.element and
+                renderer.element.collidepoint(mouse_pos)):  # and
+                # distance_point_line(mouse_pos, renderer.local_x, renderer.local_y) < 5):
+
+                renderer.display(self.screen, self.font, mouse_pos)
 
         self.scene = build_scene(road_network, self.WIN_SIZE, self.GRID_SIZE, self.metric)
 
@@ -102,14 +92,16 @@ class EnvViewer(object):
 
 
 class LinkRenderer:
-    def __init__(self, link, color, metric, width=10, position=(100, 100, 100, 100)):
+    def __init__(self, net, link, color, metric, width=10, position=(100, 100, 100, 100)):
+        self.net: Network = net
         self.link: Link = link  # Reference to the Link object
         self.color = color
+        self.metric_func_callback: callable = None
 
         if metric == 'cost':
-            self.metric_func_callback: function = self.link.get_cost
+            self.metric_func_callback = self.link.get_cost
         elif metric == 'flow':
-            self.metric_func_callback: function = self.link.get_flow
+            self.metric_func_callback = self.link.get_flow
 
         self.width = width
 
@@ -128,6 +120,9 @@ class LinkRenderer:
         self.end_x = position[2] + self.offset
         self.end_y = position[3] + self.offset
 
+        self.local_x = (self.start_x, self.end_x)
+        self.local_y = (self.start_y, self.end_y)
+
         self.element = None
 
     def render(self, surface, font):
@@ -137,24 +132,13 @@ class LinkRenderer:
 
     def update(self):
         v = self.metric_func_callback()
-
-        if v > 100:
-            self.color = RED
-        elif v > 50:
-            self.color = ORANGE
-        elif v > 20:
-            self.color = YELLOW
-        elif v > 5:
-            self.color = GREEN
-        else:
-            self.color = GRAY
-
-        # self.color = GRAY
-        # print(f'updated link {str(self.link)} with flow {v} to color {self.color}')
-        # sleep(1)
+        self.color = color_gradient(v, 0.0, self.net.get_total_flow())
 
     def display(self, surface, font, pos):
         label = str(self.link) + ': ' + str( round( self.metric_func_callback(), 2 ) )
+
+        pos = (0, 100)
+
         display_text_box(label, surface, font, pos)
 
     def destroy(self):
@@ -162,7 +146,7 @@ class LinkRenderer:
 
 
 class NodeRenderer:
-    def __init__(self, node, color, radius=30, position=(100, 100)):
+    def __init__(self, node, color, radius=10, position=(100, 100)):
         self.node: Node = node  # Reference to the node object
         self.color = color
 
@@ -261,18 +245,17 @@ def build_scene(net: Network, win_size: Tuple[int, int] = WIN_SIZE, grid_size: T
 
     node_radius *= 0.2
     nodes: Dict[str, Tuple[int, int]] = {}
-    offset = 0
-    for i, n in enumerate(net.get_N()):
+
+    Ns = net.render_order if net.render_order else net.get_N().keys()
+    for i, n in enumerate(Ns):
 
         # skip
-        if i == 2 or i == 12:
-            offset += 1
+        if n == '_':
+            continue
 
-        i += offset
         n = str(n)
         node_position = ( cell_positions[i][0] + (cell_size_x / 2), cell_positions[i][1] + (cell_size_y / 2) )
         nodes[n] = node_position
-
 
     links: Dict[str, Tuple[int, int, int, int]] = {}
 
@@ -297,7 +280,7 @@ def build_scene(net: Network, win_size: Tuple[int, int] = WIN_SIZE, grid_size: T
     scene = Scene()
     scene.add_renderer(menu)
     for l, link_position in links.items():
-        scene.add_renderer( LinkRenderer(net.get_link(l), color=GRAY, metric=metric, width=link_width, position=link_position) )
+        scene.add_renderer( LinkRenderer(net, net.get_link(l), color=GRAY, metric=metric, width=link_width, position=link_position) )
     for n, node_position in nodes.items():
         scene.add_renderer( NodeRenderer(n, color=GRAY, radius=node_radius, position=node_position) )
     return scene
@@ -324,8 +307,48 @@ def display_text_box(text, screen, font, pos):
     screen.blit(text_surface, text_rect)
 
 
+# Para fazer o gradiente de cores, podemos usar a função abaixo, que recebe um valor e retorna uma cor RGB
+# O valor é normalizado entre min_value e max_value
+# Quanto mais proximo do min_value, mais vermelho.
+# Quanto mais proximo do max_value, mais verde.
+# Inclua também um valores intermediários para amarelo e laranja.
+def color_gradient(value: float, min_value: float, max_value: float) -> Tuple[int, int, int]:
+    """
+    Maps a value to an RGB color, transitioning from Green to Yellow to Red
+    across the specified range of values.
+
+    :param value: The value to map to a color.
+    :param min_value: The minimum value, mapped to Green.
+    :param max_value: The maximum value, mapped to Red.
+    :return: A tuple representing the RGB color.
+    """
+    if value == 0.0:
+        return (180, 180, 180)
+
+    # Ensure the value is within the bounds
+    value = max(min(value, max_value), min_value)
+    # Normalize the value to a 0-1 scale
+    normalized = (value - min_value) / (max_value - min_value)
+
+    if normalized < 0.5:
+        # Scale from Green (0,1,0) to Yellow (1,1,0)
+        red = int(2 * normalized * 255)  # Increase red to transition to yellow
+        green = 255
+    else:
+        # Scale from Yellow (1,1,0) to Red (1,0,0)
+        red = 255
+        green = int((1 - (normalized - 0.5) * 2) * 255)  # Decrease green to transition to red
+    blue = 0
+
+    return (red, green, blue)
+
+
 def distance_point_line(pt, l1, l2):
     NV = pg.math.Vector2(l1[1] - l2[1], l2[0] - l1[0])
     LP = pg.math.Vector2(l1)
     P = pg.math.Vector2(pt)
-    return abs(NV.normalize().dot(P -LP))
+
+    # print(pt, l1, l2)
+    # print(NV, LP, P)
+
+    return abs(NV.normalize().dot(P - LP))
