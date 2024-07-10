@@ -399,9 +399,6 @@ class Link:
         # create/reset non-static variables (those that may change during simulations, like flow and cost)
         self.reset()
 
-    def get_cost(self, value):
-        return self.__get_cost(value)
-
     def __get_cost(self, value):
         return self.__cost_function.evaluate({self.__param_name: value})
 
