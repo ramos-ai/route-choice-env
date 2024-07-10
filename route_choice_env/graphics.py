@@ -25,66 +25,61 @@ class EnvViewer(object):
     """A viewer to render a road network environment."""
 
     def __init__(self, env: "AbstractEnv", road_network: Network, win_size=WIN_SIZE, grid_size=None) -> None:  # noqa: F821
-         # init pygame modules
-        pg.init()
 
-        # window size
         self.WIN_SIZE = win_size
         self.GRID_SIZE = GRID_SIZES[road_network.name]
+        self._win_width = win_size[0]
+        self._win_height = win_size[1]
 
-        # create opengl context
-        self.screen = pg.display.set_mode(self.WIN_SIZE,)  # flags=pg.OPENGL | pg.DOUBLEBUF)
-        pg.display.set_caption(f"RouteChoiceEnv - {road_network.name}")
+        # create the window
+        self._clock = pg.time.Clock()
+        self._fps = 0
+        self._screen = create_window('RouteChoiceEnv', win_size)
+        self._font = pg.font.SysFont(None, 30)
 
-        # create an object to help track time
-        self.clock = pg.time.Clock()
-        self.time = 0
+        # build scene
+        self._metric = 'cost'
+        self._scene = build_scene(road_network, self.WIN_SIZE, self.GRID_SIZE, self._metric)
 
-        # create a font object
-        self.font = pg.font.SysFont(None, 30)
-
-        self.metric = 'cost'
-        self.scene = build_scene(road_network, self.WIN_SIZE, self.GRID_SIZE, self.metric)
-
-    def check_events(self):
+    def _check_events(self):
         for event in pg.event.get():
             if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE):
-                self.scene.destroy()
+                self._scene.destroy()
                 pg.quit()
                 sys.exit()
 
             if event.type == pg.KEYDOWN and event.key == pg.K_c:
-                self.metric = 'cost'
+                self._metric = 'cost'
             elif event.type == pg.KEYDOWN and event.key == pg.K_f:
-                self.metric = 'flow'
+                self._metric = 'flow'
 
     def render(self, road_network):
         # clear framebuffer
         # self.ctx.clear(color=(0.08, 0.16, 0.18))
 
-        self.check_events()
+        self._check_events()
 
         # Clear the screen
-        self.screen.fill((255, 255, 255))
+        self._screen.fill((255, 255, 255))
 
         mouse_pos = pg.mouse.get_pos()
 
-        for renderer in self.scene.renderers:
+        for renderer in self._scene.renderers:
             if (renderer.element and
                 renderer.element.collidepoint(mouse_pos)):  # and
                 # distance_point_line(mouse_pos, renderer.local_x, renderer.local_y) < 5):
 
-                renderer.display(self.screen, self.font, mouse_pos)
+                renderer.display(self._screen, self._font, mouse_pos)
 
-        self.scene = build_scene(road_network, self.WIN_SIZE, self.GRID_SIZE, self.metric)
+        self._scene = build_scene(road_network, self.WIN_SIZE, self.GRID_SIZE, self._metric)
 
         # render scene
-        self.scene.render(self.screen, self.font)
+        self._scene.render(self._screen, self._font)
 
         # swap buffers
         pg.display.flip()
 
-        self.clock.tick(60)
+        self._clock.tick(self._fps)
 
     def close(self) -> None:
         """Close the pygame window."""
@@ -343,12 +338,45 @@ def color_gradient(value: float, min_value: float, max_value: float) -> Tuple[in
     return (red, green, blue)
 
 
-def distance_point_line(pt, l1, l2):
-    NV = pg.math.Vector2(l1[1] - l2[1], l2[0] - l1[0])
-    LP = pg.math.Vector2(l1)
-    P = pg.math.Vector2(pt)
+def create_window(
+    title: str,
+    window_size: Tuple[int, int],
+    init_pygame: bool = True,
+    center_window: bool = True,
+    **kwargs
+) -> "pg.Surface":
+    """
+    Set pygame window.
 
-    # print(pt, l1, l2)
-    # print(NV, LP, P)
+    :param title: Window title
+    :param window_size: Window size
+    :param pygame_menu_icon: Use pygame menu icon
+    :param init_pygame: Init pygame
+    :param center_window: Center the window
+    :param kwargs: Optional keyword arguments received by display set_mode
+    :return: Pygame surface from created display
+    """
+    assert len(title) > 0, 'title cannot be empty'
+    assert len(window_size) == 2, 'window size shape must be (width, height)'
+    assert isinstance(window_size[0], int), 'width must be an integer'
+    assert isinstance(window_size[1], int), 'height must be an integer'
 
-    return abs(NV.normalize().dot(P - LP))
+    # from pygame_menu.baseimage import IMAGE_EXAMPLE_PYGAME_MENU, BaseImage
+    import os
+
+    if init_pygame:
+        pg.init()
+    if center_window:
+        os.environ['SDL_VIDEO_CENTERED'] = '1'
+
+    # Create pygame screen and objects
+    if sys.platform == 'darwin':
+        kwargs = {}
+
+    try:
+        surface = pg.display.set_mode(window_size, **kwargs)
+    except TypeError:
+        surface = pg.display.set_mode(window_size)
+    pg.display.set_caption(title)
+
+    return surface
