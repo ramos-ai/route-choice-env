@@ -1,4 +1,3 @@
-import numpy as np
 from gymnasium.spaces import Discrete
 
 import functools
@@ -44,6 +43,8 @@ class RouteChoicePZ(ParallelEnv):
             normalise_costs: bool = True,
             preference_dist_name: str = None,
             route_filename: str = None,
+            max_episodes: int = None,
+            algorithm: str = None,
     ):
         self.__road_network = Network(net_name, routes_per_od, alt_route_file_name=route_filename)
         self.__road_network.reset_graph()
@@ -60,10 +61,14 @@ class RouteChoicePZ(ParallelEnv):
 
         self.__avg_travel_time = 0
         self.__normalised_avg_travel_time = 0
+        self.__avg_flow = 0
 
         # sum of routes' costs through time (used to compute the averages)
         self.routes_costs_sum = {od: [0.0 for _ in range(self.__road_network.get_route_set_size(od))] for od in self.od_pairs}
         self.routes_costs_min = {od: 0.0 for od in self.od_pairs}
+
+        self.tolls_share_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
+        self.side_payment_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
 
         self.__flow_distribution = self.__road_network.get_empty_solution()
         self.__flow_distribution_w_preferences = self.__road_network.get_empty_solution()
@@ -78,20 +83,36 @@ class RouteChoicePZ(ParallelEnv):
         self.observation_spaces = {a: self.observation_space(a) for a in self.agents}
         self.action_spaces = {a: self.action_space(a) for a in self.agents}
 
-        self.__iteration = 0
         self.viewer = None
-
-        # dev
-        # ---
-        self.tolls_share_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
-        self.side_payment_per_od = [0.0 for _ in range(len(self.__road_network.get_OD_pairs()))]
-        # ---
+        self.__iteration = 0
+        self.__max_episodes = max_episodes
+        self.__algorithm = algorithm
 
     # -- Road Network properties
     # -----------------------------
     @property
     def avg_travel_time(self):
         return self.__avg_travel_time
+
+    @property
+    def normalised_avg_travel_time(self):
+        return self.__normalised_avg_travel_time
+
+    @property
+    def avg_flow(self):
+        return self.__avg_flow
+
+    @property
+    def iteration(self):
+        return self.__iteration
+
+    @property
+    def episodes(self):
+        return self.__max_episodes
+
+    @property
+    def algorithm(self):
+        return self.__algorithm
 
     @property
     def od_pairs(self):
@@ -176,6 +197,7 @@ class RouteChoicePZ(ParallelEnv):
             self.__flow_distribution_w_preferences[od_order][route_id] += d_flow * (1 - self.get_driver_preference_money_over_time(d_id))
 
         self.__avg_travel_time, self.__normalised_avg_travel_time = self.__road_network.evaluate_assignment(self.__flow_distribution, self.__flow_distribution_w_preferences)
+        self.__avg_flow = sum( [ self.road_network.get_OD_flow(od) for od in self.road_network.get_OD_pairs() ] ) / len( self.road_network.get_OD_pairs() )
 
         # Update the sum of routes' costs (used to compute the averages)
         self.__update_routes_costs_stats()
@@ -235,8 +257,8 @@ class RouteChoicePZ(ParallelEnv):
 
     def render(self):
         if self.viewer is None:
-            self.viewer = EnvViewer(self, self.road_network)
-        self.viewer.render(self.road_network)
+            self.viewer = EnvViewer(self)
+        self.viewer.render(self)
 
     def close(self):
         del self
