@@ -9,6 +9,7 @@ setup(
       author_email='luizthomasini@gmail.com',
       packages=find_packages(),
       install_requires=[
+            'dearpygui',
             'gymnasium',
             'matplotlib',
             'numpy',
