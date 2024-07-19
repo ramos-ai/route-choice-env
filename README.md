@@ -98,7 +98,7 @@ $ python3 cli.py --alg GTQLearning --net OW --k 8 --alpha_decay 0.99 --epsilon_d
 
 #### Demo
 
-![](https://github.com/ramos-ai/route-choice-env/ui.gif)
+![](https://github.com/ramos-ai/route-choice-env/blob/main/ui.gif)
 
 
 ## Running experiments
