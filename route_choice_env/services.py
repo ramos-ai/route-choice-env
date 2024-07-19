@@ -98,7 +98,8 @@ def simulate(
         revenue_redistribution_rate=revenue_redistribution_rate,
         preference_dist_name=preference_dist_name,
         route_filename=route_filename,
-        max_episodes=episodes
+        max_episodes=episodes,
+        algorithm=alg
         )
 
     # instantiate global policy
