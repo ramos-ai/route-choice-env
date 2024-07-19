@@ -33,3 +33,8 @@ dedge 3-4 3 4 BraessG 0.00238095238095 0.0000000000
 #
 #name origin destination flow
 od 1|4 1 4 4200
+#render
+order 1
+order 2
+order 3
+order 4

@@ -78,6 +78,29 @@ For now, we only implemented agents for drivers of our environment.
 
 Available networks specification can be found at [MASLAB's transportation network repository](https://github.com/maslab-ufrgs/transportation_networks)
 
+
+## Running with CLI
+
+1. `cd` into `route_choice_env/` folder.
+2. run the experiment using the cli.
+
+```bash
+$ python3 cli.py -h
+```
+
+### Using the UI
+
+1. run using `--render` flag
+
+```bash
+$ python3 cli.py --alg GTQLearning --net OW --k 8 --alpha_decay 0.99 --epsilon_decay 0.99 --episodes 1000 --render
+```
+
+#### Demo
+
+![](https://github.com/ramos-ai/route-choice-env/ui.gif)
+
+
 ## Running experiments
 
 Single thread:

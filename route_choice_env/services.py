@@ -1,4 +1,5 @@
 import numpy as np
+import dearpygui.dearpygui as dpg
 from typing import Dict
 from pettingzoo.utils.conversions import AgentID
 
@@ -96,7 +97,8 @@ def simulate(
         agent_vehicles_factor,
         revenue_redistribution_rate=revenue_redistribution_rate,
         preference_dist_name=preference_dist_name,
-        route_filename=route_filename
+        route_filename=route_filename,
+        max_episodes=episodes
         )
 
     # instantiate global policy
@@ -113,38 +115,87 @@ def simulate(
         drivers = get_gtq_learning_agents(env, policy)
 
     if render:
+
+        # START SIMULATION
+        # ----------------
         env.render()
 
-    best = float('inf')
-    for _ in range(episodes):
+        done = False
 
-        # query for action from each agent's policy
-        act_n = {d_id: drivers[d_id].choose_action() for d_id in env.agents}
+        # render loop
+        while dpg.is_dearpygui_running():  # dpg.start_dearpygui()
 
-        # update global policy
-        policy.update(epsilon_decay)
+            best = float('inf')
+            if not done:
 
-        # step environment
-        obs_n, reward_n, terminal_n, truncated_n, info_n = env.step(act_n)
+                # simulation loop
+                for _ in range(episodes):
 
-        if render:
-            env.render()
+                    # query for action from each agent's policy
+                    act_n = {d_id: drivers[d_id].choose_action() for d_id in env.agents}
 
-        # test for best avg travel time
-        if env.avg_travel_time < best:
-            best = env.avg_travel_time
+                    # update global policy
+                    policy.update(epsilon_decay)
 
-        # update strategy (Q table)
-        for d_id in drivers.keys():
-            drivers[d_id].update_strategy(obs_n[d_id], reward_n[d_id], info_n[d_id], alpha=alpha)
+                    # step environment
+                    obs_n, reward_n, terminal_n, truncated_n, info_n = env.step(act_n)
 
-        # update global learning rate (alpha)
-        if alpha > min_alpha:
-            alpha = alpha * alpha_decay
-        else:
-            alpha = min_alpha
+                    if render:
+                        env.render()
 
-        solution = env.road_network_flow_distribution
-        env.reset()
+                    # test for best avg travel time
+                    if env.avg_travel_time < best:
+                        best = env.avg_travel_time
 
-    env.close()
+                    # update strategy (Q table)
+                    for d_id in drivers.keys():
+                        drivers[d_id].update_strategy(obs_n[d_id], reward_n[d_id], info_n[d_id], alpha=alpha)
+
+                    # update global learning rate (alpha)
+                    if alpha > min_alpha:
+                        alpha = alpha * alpha_decay
+                    else:
+                        alpha = min_alpha
+
+                    solution = env.road_network_flow_distribution
+                    env.reset()
+
+                done = True
+                env.close()
+
+        dpg.destroy_context()
+
+    else:
+        best = float('inf')
+        for _ in range(episodes):
+
+            # query for action from each agent's policy
+            act_n = {d_id: drivers[d_id].choose_action() for d_id in env.agents}
+
+            # update global policy
+            policy.update(epsilon_decay)
+
+            # step environment
+            obs_n, reward_n, terminal_n, truncated_n, info_n = env.step(act_n)
+
+            if render:
+                env.render()
+
+            # test for best avg travel time
+            if env.avg_travel_time < best:
+                best = env.avg_travel_time
+
+            # update strategy (Q table)
+            for d_id in drivers.keys():
+                drivers[d_id].update_strategy(obs_n[d_id], reward_n[d_id], info_n[d_id], alpha=alpha)
+
+            # update global learning rate (alpha)
+            if alpha > min_alpha:
+                alpha = alpha * alpha_decay
+            else:
+                alpha = min_alpha
+
+            solution = env.road_network_flow_distribution
+            env.reset()
+
+        env.close()

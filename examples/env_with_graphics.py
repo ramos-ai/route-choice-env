@@ -1,22 +1,46 @@
 import timeit
-from time import sleep
+from argparse import ArgumentParser
+from time import time, sleep
 
 from route_choice_env.route_choice import RouteChoicePZ
 from route_choice_env.core import Policy
 
 from route_choice_env.agents.rmq_learning import RMQLearning
-from route_choice_env.policy import EpsilonGreedy
+from route_choice_env.agents.simple_driver import SimpleDriver
+
+from route_choice_env.policy import EpsilonGreedy, Random
 
 from pettingzoo.utils.conversions import AgentID
 
 
-def get_env():
-    return RouteChoicePZ('Braess_1_4200_10_c1', 3)
+def get_env(net):
+    routes_per_od = {
+        'BBraess_7_2100_10_c1_900': 4,
+        'Braess_1_4200_10_c1': 3,
+        'Braess_7_4200_10_c1': 16,
+        'OW': 12,
+        'SF': 12,
+        'Anaheim': 16,
+        'Eastern-Massachusetts': 16,
+    }
+
+    return RouteChoicePZ(net, routes_per_od[net])
 
 
 def get_policy() -> Policy:
+    # return Random()
     return EpsilonGreedy(epsilon=1.0, min_epsilon=0.0)
 
+
+def get_simple_agents(env: RouteChoicePZ, policy: Policy) -> dict[AgentID, SimpleDriver]:
+    return {
+        d_id: SimpleDriver(
+            actions=list(range(env.action_space(d_id).n)),
+            d_id=d_id,
+            policy=policy
+        )
+        for d_id in env.agents
+    }
 
 def get_learning_agents(env: RouteChoicePZ, policy: Policy) -> dict[AgentID, RMQLearning]:
     obs_n, info_n = env.reset(return_info=True)
@@ -33,6 +57,7 @@ def get_learning_agents(env: RouteChoicePZ, policy: Policy) -> dict[AgentID, RMQ
 
 
 def main(
+        NET='OW',
         ITERATIONS=1000,
         DECAY=0.995,
         ALPHA=1.0,
@@ -40,7 +65,7 @@ def main(
 ):
 
     # instantiate env
-    env = get_env()
+    env = get_env(NET)
     env.render()
 
     print('starting simulation...')
@@ -50,7 +75,7 @@ def main(
     policy = get_policy()
 
     # instantiate learning agents as drivers
-    drivers: dict[AgentID, RMQLearning] = get_learning_agents(env, policy)
+    drivers: dict[AgentID, RMQLearning] = get_simple_agents(env, policy)
 
     best = float('inf')
     for _ in range(ITERATIONS):
@@ -59,7 +84,7 @@ def main(
         act_n = {d_id: drivers[d_id].choose_action() for d_id in env.agents}
 
         # update global policy (epsilon)
-        policy.update(DECAY)
+        policy.update()
 
         # step environment
         obs_n_, reward_n, terminal_n, truncated_n, info_n = env.step(act_n)
@@ -70,18 +95,7 @@ def main(
         if env.avg_travel_time < best:
             best = env.avg_travel_time
 
-        # Update strategy (Q table)
-        for d_id in env.agents:
-            drivers[d_id].update_strategy(obs_n_[d_id], reward_n[d_id], info_n[d_id], alpha=ALPHA)
-
-        # update global learning rate (alpha)
-        if ALPHA > MIN_ALPHA:
-            ALPHA = ALPHA * DECAY
-        else:
-            ALPHA = MIN_ALPHA
-
         solution = env.road_network_flow_distribution
-        print(solution)
 
         env.reset()
 
@@ -93,7 +107,11 @@ def main(
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument('--net', type=str, default='OW')
+    args = parser.parse_args()
+
     starttime = timeit.default_timer()
     print("Exp start time is :", starttime)
-    main()
+    main(args.net)
     print("Exp time difference is :", timeit.default_timer() - starttime)

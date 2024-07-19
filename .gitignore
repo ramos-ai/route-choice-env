@@ -13,12 +13,13 @@ venv/
 __pycache__/
 
 # Backup
-backup
+backup/
 
 # Results
 results
 
 # Results
 .ipynb_checkpoints/
-analytics
+analytics/
+results/
 experiments/results

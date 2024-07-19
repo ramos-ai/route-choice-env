@@ -14,6 +14,8 @@ class Network:
         self.__L = {}
         self.__routes = {}
         self.__normalisation_factor_routes = float('-inf')
+        self.__expr = None
+        self.render_order = []
 
         self.__create_graph(network_name)
 
@@ -31,6 +33,9 @@ class Network:
         for od in self.get_OD_pairs():
             for r in self.get_routes(od):
                 r.set_free_flow_travel_time(r.get_cost(False), r.get_cost(True))
+
+    def get_expr(self):
+        return self.__expr
 
     def get_OD_matrix(self):
         return self.__OD_matrix
@@ -150,6 +155,7 @@ class Network:
 
                 # process the function
                 expr = taglist[3]
+                self.__expr = expr
                 function = Parser().parse(expr)
 
                 # compute the derivative of the function (for tolling)
@@ -215,6 +221,9 @@ class Network:
 
             elif taglist[0] == 'od':
                 continue
+
+            elif taglist[0] == 'order':
+                self.render_order.append(taglist[1])
 
             else:
                 raise Exception('Network file does not comply with the specification! (line %d: "%s")' % (lineid, line))
